@@ -22,7 +22,8 @@ Train is a revolutionary bridging protocol designed to address the challenges of
 
 ## Architecture
 
-![image](https://github.com/user-attachments/assets/b9ce1642-179a-4cc2-b1c2-b137153ad66b)
+<img width="2312" alt="Diagram 1" src="https://github.com/user-attachments/assets/d004b399-bbe8-4138-ab01-56b8ee5a06c9" />
+
 
 ## How It Works
 
