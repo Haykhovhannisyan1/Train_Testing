@@ -1,8 +1,6 @@
 # Train: Permissionless, Trustless Cross-Chain Bridging Protocol
 
-Live in tesnets - [Train](https://layerswap.io/v8)
-
-Read the protocol description and sepc [draft] - [Train Notion](https://docs.train.tech/)
+Read the protocol description and sepc [draft] - [Train Documentation](https://docs.train.tech/)
 
 ## TL;DR
 

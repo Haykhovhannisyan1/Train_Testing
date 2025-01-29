@@ -1,5 +1,5 @@
 [package]
-name = "starknet_htlc"
+name = "train_protocol"
 version = "0.1.0"
 edition = "2023_11"
 
@@ -7,8 +7,9 @@ edition = "2023_11"
 
 [dependencies]
 starknet = ">=2.7.0"
-openzeppelin = "0.15.1"
+openzeppelin = "0.16.0"
 alexandria_math = { git = "https://github.com/keep-starknet-strange/alexandria.git" }
+# snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.20.1" }
 
 [[target.starknet-contract]]
 sierra = true

@@ -1,1 +1,1 @@
-mod HashTimeLockedERC20;
+mod TrainERC20;

@@ -1,13 +1,12 @@
-//                                                   __     _____
-//| |    __ _ _   _  ___ _ __ _____      ____ _ _ __ \ \   / ( _ )
-//| |   / _` | | | |/ _ \ '__/ __\ \ /\ / / _` | '_ \ \ \ / // _ \
-//| |__| (_| | |_| |  __/ |  \__ \\ V  V / (_| | |_) | \ V /| (_) |
-//|_____\__,_|\__, |\___|_|  |___/ \_/\_/ \__,_| .__/   \_/  \___/
-//            |___/                            |_|
+//   _____ ____      _    ___ _   _      ____  ____   ___ _____ ___   ____ ___  _
+//  |_   _|  _ \    / \  |_ _| \ | |    |  _ \|  _ \ / _ \_   _/ _ \ / ___/ _ \| |
+//    | | | |_) |  / _ \  | ||  \| |    | |_) | |_) | | | || || | | | |  | | | | |
+//    | | |  _ <  / ___ \ | || |\  |    |  __/|  _ <| |_| || || |_| | |__| |_| | |___
+//    |_| |_| \_\/_/   \_\___|_| \_|    |_|   |_| \_\\___/ |_| \___/ \____\___/|_____|
 
 use starknet::ContractAddress;
 #[starknet::interface]
-pub trait IHashedTimelockERC20<TContractState> {
+pub trait ITrainERC20<TContractState> {
     fn commit_hop(
         ref self: TContractState,
         Id: u256,
@@ -64,8 +63,8 @@ pub trait IHashedTimelockERC20<TContractState> {
         s: felt252,
         y_parity: bool,
     ) -> u256;
-    fn getHTLCDetails(self: @TContractState, Id: u256) -> HashedTimelockERC20::HTLC;
-    fn getRewardDetails(self: @TContractState, Id: u256) -> HashedTimelockERC20::Reward;
+    fn getHTLCDetails(self: @TContractState, Id: u256) -> TrainERC20::HTLC;
+    fn getRewardDetails(self: @TContractState, Id: u256) -> TrainERC20::Reward;
 }
 
 /// @title Pre Hashed Timelock Contracts (PHTLCs) on Starknet ERC20 tokens.
@@ -83,7 +82,7 @@ pub trait IHashedTimelockERC20<TContractState> {
 ///      redeem the tokens the sender / creator of the HTLC can get their tokens
 ///      back with this function.
 #[starknet::contract]
-mod HashedTimelockERC20 {
+mod TrainERC20 {
     use core::pedersen::PedersenTrait;
     use core::hash::{HashStateTrait, HashStateExTrait};
     use core::traits::Into;
@@ -235,7 +234,7 @@ mod HashedTimelockERC20 {
     }
 
     #[abi(embed_v0)]
-    impl HashedTimelockERC20 of super::IHashedTimelockERC20<ContractState> {
+    impl TrainERC20 of super::ITrainERC20<ContractState> {
         /// @dev Sender / Payer sets up a new pre-hash timelock contract depositing the
         /// funds and providing the reciever/srcReceiver and terms.
         /// @param srcReceiver reciever of the funds.
@@ -438,7 +437,7 @@ mod HashedTimelockERC20 {
                         srcReceiver: srcReceiver
                     }
                 );
-            // Write the Reward data into the storage, if the reward is not zero
+            //Write the Reward data into the storage, if the reward is not zero
             if reward != 0 {
                 self.rewards.write(Id, Reward { amount: reward, timelock: rewardTimelock });
             }
@@ -647,7 +646,7 @@ mod HashedTimelockERC20 {
         fn get_message_hash(
             self: @ContractState, message: Message, sender_key: felt252
         ) -> felt252 {
-            let domain = StarknetDomain { name: 'LayerswapV8', chain_id: 'StarkNet', version: 1 };
+            let domain = StarknetDomain { name: 'Train', chain_id: 'StarkNet', version: 1 };
             //initialize the Pederson Hash with 0
             let mut state = PedersenTrait::new(0);
             //update with StarkNet Message
