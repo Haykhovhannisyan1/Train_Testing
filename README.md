@@ -1,19 +1,19 @@
-# Layerswap V8: Permissionless, Trustless Cross-Chain Bridging Protocol
+# Train: Permissionless, Trustless Cross-Chain Bridging Protocol
 
-Live in tesnets - [Layerswap V8](https://layerswap.io/v8)
+Live in tesnets - [Train](https://layerswap.io/v8)
 
-Read the protocol description and sepc [draft] - [Layerswap V8 Notion](https://layerswap.notion.site)
+Read the protocol description and sepc [draft] - [Train Notion](https://docs.train.tech/)
 
 ## TL;DR
 
-- Introduces PreHTLC, an improved version of HTLC for practical atomic swaps
+- Introduces Train, an improved version of HTLC for practical atomic swaps
 - Permissionless and trustless protocol without reliance on 3rd parties
 - Supports multi-hop transactions for bridging between indirectly connected chains
 - Alpha version available for testing on multiple testnets
 
 ## Introduction
 
-Layerswap V8 is a revolutionary bridging protocol designed to address the challenges of seamless asset movement across the rapidly expanding cryptocurrency ecosystem. As the number of blockchain networks grows, including L1s, L2s, side-chains, and app-chains, the need for efficient and secure cross-chain asset transfer becomes critical.
+Train is a revolutionary bridging protocol designed to address the challenges of seamless asset movement across the rapidly expanding cryptocurrency ecosystem. As the number of blockchain networks grows, including L1s, L2s, side-chains, and app-chains, the need for efficient and secure cross-chain asset transfer becomes critical.
 
 ## Key Features
 
@@ -28,7 +28,7 @@ Layerswap V8 is a revolutionary bridging protocol designed to address the challe
 
 ## How It Works
 
-Layerswap V8 introduces PreHTLC (Pre-Hashed Time Lock Contract), an improved version of HTLC that addresses key limitations:
+Train introduces, an improved version of HTLC that addresses key limitations:
 
 1. User creates a PreHTLC, committing funds for the selected LP
 2. LP detects the transaction, generates a Secret, and creates an HTLC on the destination chain

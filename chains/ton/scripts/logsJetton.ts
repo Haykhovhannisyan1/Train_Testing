@@ -2,7 +2,7 @@ import { HttpClient, Api } from 'tonapi-sdk-js';
 import { Cell, Slice } from '@ton/core';
 import { Address } from 'ton';
 import { hexToBase64 } from '../utils/utils';
-import { loadTokenNotification,loadLockCommitment,loadDeploy,loadRedeem,loadUnlock,loadUncommit, loadCommitData, loadLockData} from '../wrappers/JettonPreHTLC';
+import { loadTokenNotification,loadLockCommitment,loadDeploy,loadRedeem,loadUnlock,loadUncommit, loadCommitData, loadLockData} from '../build/jetton_train/tact_TrainJetton';
 
 type MsgTypeMap = {
     [key: string]: string;

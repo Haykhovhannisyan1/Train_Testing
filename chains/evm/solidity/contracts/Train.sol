@@ -10,7 +10,7 @@ import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 /// @title Train Contract
-/// @notice Implements the Layerswap V8 PreHTLC protocol, enabling secure and atomic cross-chain swaps.
+/// @notice Implements the Train protocol, enabling secure and atomic cross-chain swaps.
 /// @dev Manages HTLCs for trustless cross-chain transactions with event-based updates.
 
 /// @dev Represents the EIP-712 domain for signature verification.
@@ -53,7 +53,7 @@ contract Train is ReentrancyGuard {
   error InvalidTimelock();
   error InvaliRewardTimelock();
 
-  /// @dev Represents a hashed time-locked contract (HTLC) used in the Layerswap V8 protocol.
+  /// @dev Represents a hashed time-locked contract (HTLC) used in the Train protocol.
   struct HTLC {
     /// @notice The amount of funds locked in the HTLC.
     uint256 amount;

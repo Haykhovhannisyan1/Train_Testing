@@ -1,14 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { contractAddress } from 'ton';
-import { LayerswapV8Jetton as JettonPreHTLC } from '../build/JettonPreHTLC/tact_LayerswapV8Jetton';
+import { TrainJetton as Train } from '../build/jetton_train/tact_TrainJetton';
 import { prepareTactDeployment } from '@tact-lang/deployer';
 
 async function run() {
     let testnet = true; 
-    let packageName = 'tact_LayerswapV8Jetton.pkg';
-    let outputPath = path.resolve(__dirname, '../build/JettonPreHTLC'); 
-    let init = await JettonPreHTLC.init();
+    let packageName = 'tact_TrainJetton.pkg';
+    let outputPath = path.resolve(__dirname, '../build/jetton_train'); 
+    let init = await Train.init();
 
     let data = init.data.toBoc(); 
     let pkg = fs.readFileSync(path.resolve(outputPath, packageName)); 

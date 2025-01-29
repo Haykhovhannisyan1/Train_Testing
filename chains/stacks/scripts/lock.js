@@ -27,7 +27,7 @@ const msgValue = 36;
 
 const txOptions = {
   contractAddress: 'ST136VTJP5KQ24EDMKWP0PJ44VVHMGX4KNKAW3XW5',
-  contractName: 'LayerSwap',
+  contractName: 'Train',
   functionName: 'lock',
   functionArgs: [
     uintCV(id),

@@ -3,7 +3,7 @@ import { HttpClient, Api } from 'tonapi-sdk-js';
 import { Cell } from '@ton/core';
 import { Address } from 'ton';
 import { hexToBase64 } from '../utils/utils';
-import { loadTokenCommitted,loadTokenRedeemed,loadTokenLocked } from '../wrappers/HashedTimeLockTON';
+import { loadTokenCommitted, loadTokenRedeemed, loadTokenLocked } from '../build/jetton_train/tact_TrainJetton';
 
 async function parseEmit(address: string, token: string, index: number) {
     const httpClient = new HttpClient({

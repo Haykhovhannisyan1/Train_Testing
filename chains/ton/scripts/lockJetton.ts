@@ -1,16 +1,16 @@
-import { CommitData, StringImpl, LayerswapV8Jetton, dictValueParserStringImpl } from "../build/JettonPreHTLC/tact_LayerswapV8Jetton"; 
+import { CommitData, StringImpl, TrainJetton, dictValueParserStringImpl } from "../build/jetton_train/tact_TrainJetton"; 
 import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { mnemonicToWalletKey } from "ton-crypto";
 import { TonClient, WalletContractV4, Address, Cell, beginCell, Slice, Dictionary } from "@ton/ton";
 import { toNano, sleep, createStrMap } from "../utils/utils";
 import { TokenTransfer,JettonDefaultWallet } from "../build/SampleJetton/tact_JettonDefaultWallet";
-import { Builder } from "../build/JettonPreHTLC/tact_LayerswapV8Jetton";
+import { Builder } from "../build/jetton_train/tact_TrainJetton";
 
 export async function run() {
   const endpoint = await getHttpEndpoint({ network: "testnet" });
   const client = new TonClient({ endpoint });
 
-  const mnemonic = "pretty electric october neck alley tiger action assault garlic divide oppose exist online cluster luxury clump kangaroo number away analyst attitude digital zebra world";
+  const mnemonic = "";
   const key = await mnemonicToWalletKey(mnemonic.split(" "));
   const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
   if (!await client.isContractDeployed(wallet.address)) {

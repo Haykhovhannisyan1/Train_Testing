@@ -1,7 +1,7 @@
 import { TransactionVersion } from "@stacks/transactions";
 import { generateWallet, getStxAddress } from "@stacks/wallet-sdk";
 
-const mnemonic = ''; // leather
+const mnemonic = '';
 
 
 const wallet = await generateWallet({

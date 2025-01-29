@@ -1,7 +1,7 @@
 require('dotenv').config();
 import { beginCell, Cell } from "@ton/ton"; 
 import { TonClient, WalletContractV4, Address } from "@ton/ton"; 
-import { AddLockSig, LayerswapV8 } from "../build/HashedTimeLockTON/tact_LayerswapV8"; 
+import { AddLockSig, Train } from "../build/train/tact_Train"; 
 import { getHttpEndpoint } from "@orbs-network/ton-access"; 
 import { sleep, toNano } from "../utils/utils"; 
 import { mnemonicToWalletKey, sign, signVerify } from 'ton-crypto';
@@ -25,7 +25,7 @@ async function run() {
   const seqno = await walletContract.getSeqno();
 
   const contractAddress = Address.parse(process.env.CONTRACT!); 
-  const newContract = LayerswapV8.fromAddress(contractAddress);
+  const newContract = Train.fromAddress(contractAddress);
   const contractProvider = client.open(newContract);
   const amount = toNano("0.1");
 

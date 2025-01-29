@@ -2,7 +2,7 @@ require('dotenv').config();
 import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { mnemonicToWalletKey } from "ton-crypto";
 import { TonClient, WalletContractV5R1, Address } from "@ton/ton";
-import { Refund,LayerswapV8 } from "../build/HashedTimeLockTON/tact_LayerswapV8"; 
+import { Refund,Train } from "../build/train/tact_Train"; 
 import { sleep, toNano } from "../utils/utils"
 
 export async function run() {
@@ -21,7 +21,7 @@ export async function run() {
   const seqno = await walletContract.getSeqno();
 
   const contractAddress = Address.parse(process.env.CONTRACT!); 
-  const newContract = LayerswapV8.fromAddress(contractAddress);
+  const newContract = Train.fromAddress(contractAddress);
   const contractProvider = client.open(newContract);
 
   const Id = BigInt(process.env.id2!); 

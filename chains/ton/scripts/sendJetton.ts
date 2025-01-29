@@ -8,7 +8,7 @@ export async function run() {
   const endpoint = await getHttpEndpoint({ network: "testnet" });
   const client = new TonClient({ endpoint });
   
-  const mnemonic = "pretty electric october neck alley tiger action assault garlic divide oppose exist online cluster luxury clump kangaroo number away analyst attitude digital zebra world"; 
+  const mnemonic = ""; 
   
   const key = await mnemonicToWalletKey(mnemonic.split(" "));
   const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });

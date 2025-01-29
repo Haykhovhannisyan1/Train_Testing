@@ -10,7 +10,6 @@ const contractAddressString = '0xc58d73c0515ff40d01b919b3ed9fb16891a6b631ca57f56
 async function getWalletBalances() {
   const provider = await Provider.create('https://testnet.fuel.network/v1/graphql');
   const mnemonic = '';
-  // const mnemonic = 'connect people age absurd suggest river trust lunch joke clerk clinic blind';
   const wallet: WalletUnlocked = Wallet.fromMnemonic(mnemonic);
   wallet.connect(provider);
 

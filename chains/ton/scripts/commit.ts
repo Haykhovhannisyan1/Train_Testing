@@ -2,7 +2,7 @@ require('dotenv').config();
 import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { mnemonicToWalletKey } from "ton-crypto";
 import { TonClient, WalletContractV5R1, Address } from "@ton/ton";
-import { Commit,LayerswapV8 } from "../build/HashedTimeLockTON/tact_LayerswapV8"; 
+import { Commit,Train } from "../build/train/tact_Train"; 
 import { toNano, sleep, createStrMap } from "../utils/utils";
 
 const hopChains = createStrMap([
@@ -42,7 +42,7 @@ async function run() {
 
   const contractAddress = Address.parse(process.env.CONTRACT!); 
 
-  const newContract = LayerswapV8.fromAddress(contractAddress);
+  const newContract = Train.fromAddress(contractAddress);
   const contractProvider = client.open(newContract);
 
   const commitMessage: Commit = {

@@ -1,11 +1,11 @@
 require('dotenv').config();
-import { dictValueParserStringImpl } from "../build/JettonPreHTLC/tact_LayerswapV8Jetton"; 
+import { dictValueParserStringImpl } from "../build/jetton_train/tact_TrainJetton"; 
 import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { mnemonicToWalletKey } from "ton-crypto";
 import { TonClient, WalletContractV5R1, Address, Cell, beginCell, Dictionary } from "@ton/ton";
 import { toNano, sleep, createStrMap } from "../utils/utils";
 import { TokenTransfer,JettonDefaultWallet } from "../build/SampleJetton/tact_JettonDefaultWallet";
-import { Builder } from "../build/JettonPreHTLC/tact_LayerswapV8Jetton";
+import { Builder } from "../build/jetton_train/tact_TrainJetton";
 
 export async function run() {
   const endpoint = await getHttpEndpoint({ network: "testnet" });
