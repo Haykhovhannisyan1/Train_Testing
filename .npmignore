@@ -1,0 +1,8 @@
+build/
+src/
+solidity/
+examples/
+.eslintrc.yml
+.gitignore
+.prettierrc.yml
+tsconfig.esm.json
