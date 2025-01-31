@@ -1,3 +1,30 @@
+            //               ............                                                                                                          ......                                                    
+            //          ......................                           ....                                                                      .......                                                   
+            //       ............................                        .....                                                                     .......                                                   
+            //      .............................                        .....                                                                      ....                                                     
+            //      ..............................                       .....                                                                                                                               
+            //      ..............................                       .....                                                                                                                               
+            //      ....                      ....                       .....               ...        .......            .......                   ...        ...         .....                            
+            //      ....                      ....                 ...................      .....  .............      ..................            .....      .....  .................                      
+            //      ....                      ....                 ...................      ....................   .......................          .....      ..........................                    
+            //      .....                    .....                 ...................      ............          ............ .............        .....      ..............  ............                  
+            //      ........              ........                       .....              ........            ........             ........       .....      ........              .......                 
+            //      ............      ............                       .....              ......              ......                 .......      .....      .......                .......                
+            //      ..............................                       .....              ......             ......                    .....      .....      ......                  ......                
+            //      ..............................                       .....              .....             ......                     ......     .....      .....                    .....                
+            //      ..............................                       .....              .....             .....                       .....     .....      .....                    .....                
+            //       ............................                        .....              .....             .....                       .....     .....      .....                    .....                
+            //        ..........................                         .....              .....             .....                       .....     .....      .....                    .....                
+            //         ........................                          .....              .....             ......                      .....     .....      .....                    .....                
+            //           ....................                            .....              .....              ......                    ......     .....      .....                    .....                
+            //           .....          .....                            .....              .....              .......                 ........     .....      .....                    .....                
+            //         ........................                          .......            .....               ........              .........     .....      .....                    .....                
+            //       ......                .....                          .............     .....                .........         ............     .....      .....                    .....                
+            //     ...............................                         .............    .....                  ...................... .....     .....      .....                    .....                
+            //    ..................................                         ...........    .....                     .................   .....     .....      .....                    .....                
+            //     ..                           ...                              ......      ...                           ........        ...       ...        ...                      ...                 
+                                                                                                                                                                                                          
+
 contract;
 
 use std::{
@@ -14,358 +41,397 @@ use std::{
     bytes_conversions::{u64::*, u256::*, b256::*},
 };
 
+// Interface defining HTLC functions
 abi Train {
     #[payable]
-    #[storage(read,write)]
-    fn commit(hopChains: [str[64];5],
-              hopAssets: [str[64];5],
-              hopAddresses: [str[64];5],
-              dstChain: str[64],        
-              dstAsset: str[64],        
-              dstAddress: str[64],      
-              srcAsset: str[64],        
-              srcReceiver: Address,
-              timelock: u64) -> u256;
+    #[storage(read, write)]
+    fn commit(
+        hopChains: [str[64]; 5],
+        hopAssets: [str[64]; 5],
+        hopAddresses: [str[64]; 5],
+        dstChain: str[64],
+        dstAsset: str[64],
+        dstAddress: str[64],
+        srcAsset: str[64],
+        Id: u256,
+        srcReceiver: Address,
+        timelock: u64
+    ) -> u256;
 
-    #[storage(read,write)]
+    #[storage(read, write)]
     fn refund(Id: u256) -> bool;
 
-    #[storage(read,write)]
-    fn add_lock(Id: u256, hashlock: b256, timelock: u64) -> u256; 
+    #[storage(read, write)]
+    fn add_lock(Id: u256, hashlock: b256, timelock: u64) -> u256;
 
-    #[storage(read,write)]
-    fn add_lock_sig(signature: B512,Id: u256, hashlock: b256, timelock: u64) -> u256;
+    #[storage(read, write)]
+    fn add_lock_sig(signature: B512, Id: u256, hashlock: b256, timelock: u64) -> u256;
 
     #[payable]
-    #[storage(read,write)]
-    fn lock(Id: u256, 
-            hashlock: b256, 
-            timelock: u64, 
-            srcReceiver: Address, 
-            srcAsset: str[64],
-            dstChain: str[64],
-            dstAddress: str[64],
-            dstAsset: str[64]) -> u256;
+    #[storage(read, write)]
+    fn lock(
+        Id: u256,
+        hashlock: b256,
+        reward: u64,
+        rewardTimelock: u64,
+        timelock: u64,
+        srcReceiver: Address,
+        srcAsset: str[64],
+        dstChain: str[64],
+        dstAddress: str[64],
+        dstAsset: str[64]
+    ) -> u256;
 
-    #[storage(read,write)]
+    #[storage(read, write)]
     fn redeem(Id: u256, secret: u256) -> bool;
 
     #[storage(read)]
-    fn get_details(Id: u256) -> Option<HTLC>;
+    fn get_htlc_details(Id: u256) -> Option<HTLC>;
 
     #[storage(read)]
-    fn get_contracts(senderAddr: Address) -> Vec<u256>;
-
-    #[storage(read,write)]
-    fn initialize(salt: u256) -> bool;
+    fn get_reward_details(Id: u256) -> Option<Reward>;
 }
 
-pub struct TokenCommitted  {hopChains: [str[64];5],
-                            hopAssets: [str[64];5],
-                            hopAddresses: [str[64];5],
-                            Id: u256,
-                            dstChain: str[64],
-                            dstAsset: str[64],
-                            dstAddress: str[64],
-                            sender: Address,
-                            srcReceiver: Address,
-                            srcAsset: str[64],
-                            amount: u64,
-                            timelock: u64,
-                            assetId: AssetId
+// Events for logging HTLC state changes
+pub struct TokenCommitted {
+    hopChains: [str[64]; 5],
+    hopAssets: [str[64]; 5],
+    hopAddresses: [str[64]; 5],
+    Id: u256,
+    dstChain: str[64],
+    dstAsset: str[64],
+    dstAddress: str[64],
+    sender: Address,
+    srcReceiver: Address,
+    srcAsset: str[64],
+    amount: u64,
+    timelock: u64,
+    assetId: AssetId,
 }
 
-pub struct TokenLocked {Id: u256, 
-                        hashlock: b256, 
-                        dstChain: str[64],
-                        dstAddress: str[64],
-                        dstAsset: str[64],
-                        sender: Address, 
-                        srcReceiver: Address, 
-                        srcAsset: str[64],
-                        amount: u64,
-                        timelock: u64,
-                        assetId: AssetId
+pub struct TokenLocked {
+    Id: u256,
+    hashlock: b256,
+    dstChain: str[64],
+    dstAddress: str[64],
+    dstAsset: str[64],
+    sender: Address,
+    srcReceiver: Address,
+    srcAsset: str[64],
+    amount: u64,
+    reward: u64,
+    rewardTimelock: u64,
+    timelock: u64,
+    assetId: AssetId,
 }
 
-pub struct TokenRefuned { Id: u256 }
+pub struct TokenLockAdded {
+    Id: u256,
+    hashlock: b256,
+    timelock: u64,
+}
 
-pub struct TokenRedeemed { Id: u256,
-                           redeemAddress: Identity,
-                           secret: u256,
-                           hashlock: b256}
+pub struct TokenRefuned {
+    Id: u256,
+}
 
+pub struct TokenRedeemed {
+    Id: u256,
+    redeemAddress: Identity,
+    secret: u256,
+    hashlock: b256,
+}
+
+// Struct defining an HTLC contract state
 pub struct HTLC {
-                dstAddress: str[64],
-                dstChain: str[64],
-                dstAsset: str[64],
-                srcAsset: str[64],
-                sender: Address,
-                srcReceiver: Address,
-                hashlock: b256,
-                timelock: u64,
-                amount: u64,
-                secret: u256,
-                assetId: AssetId,
-                redeemed: bool,
-                refunded: bool
+    amount: u64,
+    hashlock: b256,
+    secret: u256,
+    sender: Address,
+    srcReceiver: Address,
+    timelock: u64,
+    assetId: AssetId,
+    claimed: u8,
 }
 
+// Reward struct for incentivizing early redeemers
+pub struct Reward {
+    amount: u64,
+    timelock: u64,
+}
+
+// Storage for HTLCs and rewards
 storage {
     contracts: StorageMap<u256, HTLC> = StorageMap::<u256, HTLC> {},
-    contractIds: StorageVec<u256> = StorageVec {},
-    contractNonce: u256 = 0,
-    contractSeed: u256 = 0,
+    rewards: StorageMap<u256, Reward> = StorageMap::<u256, Reward> {},
 }
 
+// Check if an HTLC exists
 #[storage(read)]
 fn has_htlc(Id: u256) -> bool {
     match storage.contracts.get(Id).try_read() {
-        Some(_) => true,  
-        None => false, 
+        Some(_) => true,
+        None => false,
     }
 }
 
-#[storage(read,write)]
-fn apply_lock(Id: u256, hashlock: b256, timelock: u64) -> u256 {
-    let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
-    require(!htlc.refunded,"Already Refunded");
-    require(timelock > timestamp(),"Not Future Timelock");
-    require(htlc.hashlock == b256::from(0),"Hashlock Already Set");
-    htlc.hashlock = hashlock;
-    htlc.timelock = timelock;
-    storage.contracts.insert(Id, htlc);
-
-    log(TokenLocked {   Id: Id, 
-                        hashlock: hashlock, 
-                        dstChain: htlc.dstChain,
-                        dstAddress: htlc.dstAddress,
-                        dstAsset: htlc.dstAddress,
-                        sender: htlc.sender, 
-                        srcReceiver: htlc.srcReceiver, 
-                        srcAsset: htlc.srcAsset,
-                        amount: htlc.amount,
-                        timelock: timelock,
-                        assetId: htlc.assetId
-        });
-    Id
+// Check if a reward exists
+#[storage(read)]
+fn has_reward(Id: u256) -> bool {
+    match storage.rewards.get(Id).try_read() {
+        Some(_) => true,
+        None => false,
+    }
 }
 
+// Implementation of the HTLC functions
 impl Train for Contract {
-    #[storage(read,write)]
-    fn initialize(salt: u256) -> bool{
-        let num: u256 = storage.contractSeed.read();
-        match num {
-            0 => {
-                    let hashedSalt: b256 = (sha256(salt + timestamp().as_u256()));
-                    storage.contractSeed.write(hashedSalt.as_u256());
-                    true
-                }
-
-            _ => {false},
-        }
-    }
-
     #[payable]
-    #[storage(read,write)]
-    fn commit(hopChains: [str[64];5],
-              hopAssets: [str[64];5],
-              hopAddresses: [str[64];5],
-              dstChain: str[64],
-              dstAsset: str[64],
-              dstAddress: str[64],
-              srcAsset: str[64],
-              srcReceiver: Address,
-              timelock: u64) -> u256 {
+    #[storage(read, write)]
+    fn commit(
+        hopChains: [str[64]; 5],
+        hopAssets: [str[64]; 5],
+        hopAddresses: [str[64]; 5],
+        dstChain: str[64],
+        dstAsset: str[64],
+        dstAddress: str[64],
+        srcAsset: str[64],
+        Id: u256,
+        srcReceiver: Address,
+        timelock: u64
+    ) -> u256 {
         require(msg_amount() > 0, "Funds Not Sent");
-        require(timelock > timestamp(), "Not Future Timelock");
-        storage.contractNonce.write(storage.contractNonce.read() + 1);
-
-        let Id: u256 = storage.contractSeed.read() ^ storage.contractNonce.read();
-        require(!has_htlc(Id), "HTLC Already Exists"); //Remove this check; the ID is guaranteed to be unique.
-        storage.contractIds.push(Id);
+        require(timelock > timestamp() + 900, "Not Future Timelock");
+        require(!has_htlc(Id), "Contract Already Exists");
 
         let htlc = HTLC {
-                        dstAddress: dstAddress,
-                        dstChain: dstChain,
-                        dstAsset: dstAsset,
-                        srcAsset: srcAsset,
-                        sender: msg_sender().unwrap().as_address().unwrap(),
-                        srcReceiver: srcReceiver,
-                        hashlock: b256::zero(),
-                        timelock: timelock,
-                        amount: msg_amount(),
-                        secret: 0,
-                        assetId: msg_asset_id(),
-                        redeemed: false,
-                        refunded: false
-                };
+            sender: msg_sender().unwrap().as_address().unwrap(),
+            srcReceiver: srcReceiver,
+            hashlock: b256::from(1),
+            timelock: timelock,
+            amount: msg_amount(),
+            secret: 1,
+            assetId: msg_asset_id(),
+            claimed: 1,
+        };
 
-        let result = storage.contracts.try_insert(Id,htlc);
+        let result = storage.contracts.try_insert(Id, htlc);
         assert(result.is_ok());
 
-        log(TokenCommitted  {hopChains: hopChains,
-                            hopAssets: hopAssets,
-                            hopAddresses: hopAddresses,
-                            Id: Id,
-                            dstChain: dstChain,
-                            dstAsset: dstAsset,
-                            dstAddress: dstAddress,
-                            sender:  msg_sender().unwrap().as_address().unwrap(),
-                            srcReceiver: srcReceiver ,
-                            srcAsset: srcAsset,
-                            amount: msg_amount(),
-                            timelock: timelock,
-                            assetId: msg_asset_id()
-                            });
+        log(TokenCommitted {
+            hopChains,
+            hopAssets,
+            hopAddresses,
+            Id,
+            dstChain,
+            dstAsset,
+            dstAddress,
+            sender: msg_sender().unwrap().as_address().unwrap(),
+            srcReceiver,
+            srcAsset,
+            amount: msg_amount(),
+            timelock,
+            assetId: msg_asset_id(),
+        });
+
         Id
     }
 
-    #[storage(read,write)]
+    #[storage(read, write)]
     fn refund(Id: u256) -> bool {
-        require(has_htlc(Id), "HTLC Does Not Exist");
+        require(has_htlc(Id), "Contract Does Not Exist");
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
 
-        require(!htlc.refunded, "Already Refunded");
-        require(!htlc.redeemed, "Already Redeemed");
+        require(htlc.claimed == 1, "Already Claimed");
         require(htlc.timelock < timestamp(), "Not Passed Timelock");
 
-        transfer(Identity::Address(htlc.sender), htlc.assetId, htlc.amount);
-
-        htlc.refunded = true;
+        htlc.claimed = 2;
         storage.contracts.insert(Id, htlc);
 
-        log(TokenRefuned { Id: Id });
+        if has_reward(Id) {
+            let reward: Reward = storage.rewards.get(Id).try_read().unwrap();
+            transfer(Identity::Address(htlc.sender), htlc.assetId, htlc.amount + reward.amount);
+        } else {
+            transfer(Identity::Address(htlc.sender), htlc.assetId, htlc.amount);
+        }
+
+        log(TokenRefuned { Id });
+
         true
     }
 
-    #[storage(read,write)]
+    #[storage(read, write)]
     fn add_lock(Id: u256, hashlock: b256, timelock: u64) -> u256 {
-        require(has_htlc(Id), "HTLC Does Not Exist");
+        require(has_htlc(Id), "Contract Does Not Exist");
+        require(timelock > timestamp() + 900, "Not Future Timelock");
+
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
-        let sender = match msg_sender().unwrap() {
-                        Identity::Address(addr) => addr,  
-                        _ => {require(false, "No Allowance");
-                        // This line will never be reached,just returning dummy value 
-                        // as all branches should return same value
-                              Address::from(0x0000000000000000000000000000000000000000000000000000000000000000) },     
-                    };
-        require(htlc.sender == sender, "No Allowance");
-        apply_lock(Id,hashlock,timelock)
-    }
+        require(htlc.claimed == 1, "Already Claimed");
+        require(htlc.hashlock == b256::from(1), "Hashlock Already Set");
 
-    #[storage(read,write)]
-    fn add_lock_sig(signature: B512,Id: u256, hashlock: b256, timelock: u64) -> u256{
-        require(has_htlc(Id), "HTLC Does Not Exist");
-        let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
-        let IdBytes: b256 = Id.into();
-        let timelockBytes: b256 = timelock.as_u256().into();
-        let message: [b256;3] = [IdBytes,hashlock,timelockBytes];
-        let messageHash = sha256(message);
-        require(htlc.sender == ec_recover_address(signature,messageHash).unwrap(),"Invalid Signature");
-        apply_lock(Id,hashlock,timelock)
-    }
+        htlc.hashlock = hashlock;
+        htlc.timelock = timelock;
+        storage.contracts.insert(Id, htlc);
 
-    #[payable]
-    #[storage(read,write)]
-    fn lock(Id: u256, 
-            hashlock: b256, 
-            timelock: u64, 
-            srcReceiver: Address, 
-            srcAsset: str[64],
-            dstChain: str[64],
-            dstAddress: str[64],
-            dstAsset: str[64]) -> u256 {
-        require(msg_amount() > 0,"Funds Not Sent");
-        require(timelock > timestamp(),"Not Future Timelock");
-        require(!has_htlc(Id),"HTLC Already Exists");
+        log(TokenLockAdded { Id, hashlock, timelock });
 
-        let htlc = HTLC {
-                dstAddress: dstAddress,
-                dstChain: dstChain,
-                dstAsset: dstAsset,
-                srcAsset: srcAsset,
-                sender: msg_sender().unwrap().as_address().unwrap(),
-                srcReceiver: srcReceiver,
-                hashlock: hashlock,
-                timelock: timelock,
-                amount: msg_amount(),
-                secret: 0,
-                assetId: msg_asset_id(),
-                redeemed: false,
-                refunded: false
-        };
-
-        let result = storage.contracts.try_insert(Id,htlc);
-        assert(result.is_ok());
-        storage.contractIds.push(Id);
-        log(TokenLocked {Id: Id, 
-                        hashlock: hashlock, 
-                        dstChain: dstChain,
-                        dstAddress: dstAddress,
-                        dstAsset: dstAsset,
-                        sender: msg_sender().unwrap().as_address().unwrap(), 
-                        srcReceiver: srcReceiver, 
-                        srcAsset: srcAsset,
-                        amount: msg_amount(),
-                        timelock: timelock,
-                        assetId: msg_asset_id()
-                    });
         Id
     }
 
-    #[storage(read,write)]
-    fn redeem(Id: u256, secret: u256) -> bool {
-        require(has_htlc(Id), "HTLC Does Not Exist");
+        #[storage(read, write)]
+    fn add_lock_sig(signature: B512, Id: u256, hashlock: b256, timelock: u64) -> u256 {
+        require(has_htlc(Id), "Contract Does Not Exist");
+        require(timelock > timestamp() + 900, "Not Future Timelock");
+
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
 
-        require(htlc.hashlock == sha256(secret),"Hashlock Not Match");
-        require(!htlc.refunded,"Already Refunded");
-        require(!htlc.redeemed,"Already Redeemed");
+        // Ensure the caller is authorized via ECDSA signature verification
+        let message: [b256; 3] = [Id.into(), hashlock, timelock.as_u256().into()];
+        let message_hash = sha256(message);
+        require(htlc.sender == ec_recover_address(signature, message_hash).unwrap(), "Invalid Signature");
+
+        require(htlc.claimed == 1, "Already Claimed");
+        require(htlc.hashlock == b256::from(1), "Hashlock Already Set");
+
+        htlc.hashlock = hashlock;
+        htlc.timelock = timelock;
+        storage.contracts.insert(Id, htlc);
+
+        log(TokenLockAdded { Id, hashlock, timelock });
+
+        Id
+    }
+
+    #[payable]
+    #[storage(read, write)]
+    fn lock(
+        Id: u256,
+        hashlock: b256,
+        reward: u64,
+        rewardTimelock: u64,
+        timelock: u64,
+        srcReceiver: Address,
+        srcAsset: str[64],
+        dstChain: str[64],
+        dstAddress: str[64],
+        dstAsset: str[64]
+    ) -> u256 {
+        require(!has_htlc(Id), "Contract Already Exists");
+        require(msg_amount() > reward, "Funds Not Sent");
+        require(timelock > timestamp() + 900, "Not Future Timelock");
+        require(rewardTimelock < timelock && rewardTimelock > timestamp(), "Invalid Reward Timelock");
+
+        let htlc = HTLC {
+            sender: msg_sender().unwrap().as_address().unwrap(),
+            srcReceiver,
+            hashlock,
+            timelock,
+            amount: msg_amount() - reward,
+            secret: 1,
+            assetId: msg_asset_id(),
+            claimed: 1,
+        };
+
+        let result = storage.contracts.try_insert(Id, htlc);
+        assert(result.is_ok());
+
+        if reward != 0 {
+            let reward_data = Reward {
+                amount: reward,
+                timelock: rewardTimelock,
+            };
+            let reward_result = storage.rewards.try_insert(Id, reward_data);
+            assert(reward_result.is_ok());
+        }
+
+        log(TokenLocked {
+            Id,
+            hashlock,
+            dstChain,
+            dstAddress,
+            dstAsset,
+            sender: msg_sender().unwrap().as_address().unwrap(),
+            srcReceiver,
+            srcAsset,
+            amount: msg_amount() - reward,
+            reward,
+            rewardTimelock,
+            timelock,
+            assetId: msg_asset_id(),
+        });
+
+        Id
+    }
+
+    #[storage(read, write)]
+    fn redeem(Id: u256, secret: u256) -> bool {
+        require(has_htlc(Id), "Contract Does Not Exist");
+        let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
+
+        require(htlc.hashlock == sha256(secret), "Hashlock Not Match");
+        require(htlc.claimed == 1, "Already Claimed");
 
         htlc.secret = secret;
-        htlc.redeemed = true;
+        htlc.claimed = 3;
         storage.contracts.insert(Id, htlc);
-        transfer(Identity::Address(htlc.srcReceiver), htlc.assetId, htlc.amount);
-        log(TokenRedeemed { Id: Id,
-                           redeemAddress: msg_sender().unwrap(),
-                           secret: secret,
-                           hashlock: htlc.hashlock});
+
+        if has_reward(Id) {
+            let reward: Reward = storage.rewards.get(Id).try_read().unwrap();
+
+            // Check if reward timelock has passed and distribute funds accordingly
+            if reward.timelock < timestamp() {
+                transfer(Identity::Address(htlc.srcReceiver), htlc.assetId, htlc.amount);
+                transfer(Identity::Address(htlc.sender), htlc.assetId, reward.amount);
+            } else {
+                let sender = match msg_sender().unwrap() {
+                    Identity::Address(addr) => addr,
+                    _ => {
+                        require(false, "Not an Address");
+                        Address::from(0x0000000000000000000000000000000000000000000000000000000000000000)
+                    }
+                };
+
+                if htlc.srcReceiver == sender {
+                    transfer(Identity::Address(htlc.srcReceiver), htlc.assetId, reward.amount + htlc.amount);
+                } else {
+                    transfer(Identity::Address(sender), htlc.assetId, reward.amount);
+                    transfer(Identity::Address(htlc.srcReceiver), htlc.assetId, htlc.amount);
+                }
+            }
+        } else {
+            transfer(Identity::Address(htlc.srcReceiver), htlc.assetId, htlc.amount);
+        }
+
+        log(TokenRedeemed {
+            Id,
+            redeemAddress: msg_sender().unwrap(),
+            secret,
+            hashlock: htlc.hashlock,
+        });
+
         true
     }
 
     #[storage(read)]
-    fn get_details(Id: u256) -> Option<HTLC> {
+    fn get_htlc_details(Id: u256) -> Option<HTLC> {
         match storage.contracts.get(Id).try_read() {
             Some(htlc) => Some(htlc),
             None => {
-                log("HTLC does not exist");
+                log("Contract Does Not Exist");
                 None
             }
         }
     }
 
     #[storage(read)]
-    fn get_contracts(senderAddr: Address) -> Vec<u256> {
-        let mut Ids: Vec<u256> = Vec::new();
-        let mut i = 0;
-        while i < storage.contractIds.len() {
-            if let Some(contract_id_key) = storage.contractIds.get(i) {
-                let contract_id = contract_id_key.read();
-                match storage.contracts.get(contract_id).try_read() {
-                    Some(htlc) => {
-                        if senderAddr == htlc.sender{
-                            Ids.push(contract_id);
-                        }
-                    },
-                    _ => {}
-                };
+    fn get_reward_details(Id: u256) -> Option<Reward> {
+        match storage.rewards.get(Id).try_read() {
+            Some(reward) => Some(reward),
+            None => {
+                log("Reward Does Not Exist");
+                None
             }
-            i += 1;
         }
-        Ids
     }
 }
-
-
 

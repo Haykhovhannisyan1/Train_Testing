@@ -1,2 +1,7 @@
-out
-target
+out/*
+!out/release/
+
+out/release/*
+!out/release/fuel-abi.json
+
+target/

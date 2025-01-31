@@ -1,27 +1,32 @@
 import { Contract, Wallet, Provider, Address, DateTime, WalletUnlocked, Signer, sha256, arrayify, hexlify } from 'fuels';
 import * as fs from 'fs';
 import * as path from 'path';
+require('dotenv').config();
 
 const filePath = path.join(__dirname, '../out/release/fuel-abi.json');
 const contractAbi = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+const contractAddressString = process.env.CONTRACT as string;
 
-const contractAddressString = '0x81bb60bf7cdadcf4061a932685a68871dfe14eab4dcfead6059fe4f8f2651737';
+async function addLockSig() {
+  const providerUrl = process.env.PROVIDER?.trim();
+  if (!providerUrl || !providerUrl.startsWith('http')) {
+    throw new Error('Invalid PROVIDER URL. Please check your .env file.');
+  }
 
-async function getWalletBalances() {
-  const provider = await Provider.create('https://testnet.fuel.network/v1/graphql');
-  const signerMnemonic = '';
+  const provider = new Provider(providerUrl);
+  const signerMnemonic = process.env.MNEMONIC as string;
   const signerWallet: WalletUnlocked = Wallet.fromMnemonic(signerMnemonic);
   signerWallet.connect(provider);
   
-  const senderMnemonic = '';
+  const senderMnemonic = process.env.MNEMONIC2 as string;
   const senderWallet: WalletUnlocked = Wallet.fromMnemonic(senderMnemonic);
   senderWallet.connect(provider);
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, senderWallet);
-  const Id = 1n;
-  const hashlock = "0x3b7674662e6569056cef73dab8b7809085a32beda0e8eb9e9b580cfc2af22a55";
-  const currentUnixTime = Math.floor(Date.now() / 1000) + 3600;
+  const Id = 3n;
+  const hashlock = '0xd25c96a5a03ec5f58893c6e3d23d31751a1b2f0e09792631d5d2463f5a147187';
+  const currentUnixTime = Math.floor(Date.now() / 1000) + 900;
   const timelock = DateTime.fromUnixSeconds(currentUnixTime).toTai64();
 
   const IdHex = '0x' + Id.toString(16).padStart(64, '0');
@@ -51,6 +56,6 @@ async function getWalletBalances() {
   }
 }
 
-getWalletBalances().catch(console.error);
+addLockSig().catch(console.error);
 
 
