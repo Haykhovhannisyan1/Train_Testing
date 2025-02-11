@@ -6,20 +6,18 @@ async function signHTLC() {
       name: 'Train',
       version: '1',
       chainId: 11155111,
-      verifyingContract: '0xffBAFE27b69bcb16D638E3Bc79DcCCbb1eebf66c',
-      salt: '0x2e4ff7169d640efc0d28f2e302a56f1cf54aff7e127eededda94b3df0946f5c0',
+      verifyingContract: '0xeb9B3351a095647dee460AD483DcC2c5D21487CE',
     };
 
     const domainSeparator = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
-            ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address', 'bytes32'],
+            ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
             [
-                ethers.keccak256(ethers.toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)')),
+                ethers.keccak256(ethers.toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
                 ethers.keccak256(ethers.toUtf8Bytes(domain.name)),
                 ethers.keccak256(ethers.toUtf8Bytes(domain.version)),
                 domain.chainId,
-                domain.verifyingContract,
-                domain.salt
+                domain.verifyingContract
             ]
         )
     );
@@ -35,9 +33,9 @@ async function signHTLC() {
     };
 
     const message = {
-      Id: '0x3e2a9c9e3f2b6ca6e5ae9f033ba7974348027d985a6d44aed7b1aef2ccb078d9',
+      Id: '0x21cca7f40cb32536e5b648b51d4ea800a107fce6c98c393dbea187ba8c4dca4a',
       hashlock: '0x3b7674662e6569056cef73dab8b7809085a32beda0e8eb9e9b580cfc2af22a55',
-      timelock: 1736936159,
+      timelock: 99999999999,
     };
 
     const privateKey =  process.env.PRIV_KEY;

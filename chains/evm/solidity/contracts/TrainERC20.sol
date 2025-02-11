@@ -1,8 +1,28 @@
-//   _____ ____      _    ___ _   _      ____  ____   ___ _____ ___   ____ ___  _
-//  |_   _|  _ \    / \  |_ _| \ | |    |  _ \|  _ \ / _ \_   _/ _ \ / ___/ _ \| |
-//    | | | |_) |  / _ \  | ||  \| |    | |_) | |_) | | | || || | | | |  | | | | |
-//    | | |  _ <  / ___ \ | || |\  |    |  __/|  _ <| |_| || || |_| | |__| |_| | |___
-//    |_| |_| \_\/_/   \_\___|_| \_|    |_|   |_| \_\\___/ |_| \___/ \____\___/|_____|
+//                                                                                       ......
+//             ....                                                                      .......
+//             .....                                                                     .......
+//             .....                                                                      ....
+//             .....
+//             .....
+//             .....               ...        .......            .......                   ...        ...         .....
+//       ...................      .....  .............      ..................            .....      .....  .................
+//       ...................      ....................   .......................          .....      ..........................
+//       ...................      ............          ............ .............        .....      ..............  ............
+//             .....              ........            ........             ........       .....      ........              .......
+//             .....              ......              ......                 .......      .....      .......                .......
+//             .....              ......             ......                    .....      .....      ......                  ......
+//             .....              .....             ......                     ......     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             ......                      .....     .....      .....                    .....
+//             .....              .....              ......                    ......     .....      .....                    .....
+//             .....              .....              .......                 ........     .....      .....                    .....
+//             .......            .....               ........              .........     .....      .....                    .....
+//              .............     .....                .........         ............     .....      .....                    .....
+//               .............    .....                  ...................... .....     .....      .....                    .....
+//                 ...........    .....                     .................   .....     .....      .....                    .....
+//                     ......      ...                           ........        ...       ...        ...                      ...
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
@@ -10,37 +30,17 @@ import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol';
+import '@openzeppelin/contracts/utils/cryptography/EIP712.sol';
 
 /// @title Train Contract
 /// @notice Implements the Train protocol for ERC20 tokens, enabling secure and atomic cross-chain swaps.
 /// @dev Manages HTLCs for ERC20 tokens with event-driven updates.
 
-/// @dev Represents the EIP-712 domain for signature verification.
-struct EIP712Domain {
-  string name;
-  string version;
-  uint256 chainId;
-  address verifyingContract;
-  bytes32 salt;
-}
-
-contract TrainERC20 is ReentrancyGuard {
+contract TrainERC20 is ReentrancyGuard, EIP712 {
   using ECDSA for bytes32;
 
-  bytes32 private immutable DOMAIN_SEPARATOR;
-
-  /// @dev Sets up the EIP-712 domain details used for verifying signed messages.
-  constructor() {
-    DOMAIN_SEPARATOR = hashDomain(
-      EIP712Domain({
-        name: 'Train',
-        version: '1',
-        chainId: block.chainid,
-        verifyingContract: address(this),
-        salt: 0x2e4ff7169d640efc0d28f2e302a56f1cf54aff7e127eededda94b3df0946f5c0
-      })
-    );
-  }
+  constructor() EIP712('Train', '1') {}
 
   /// @dev Custom errors to simplify failure handling in the contract.
   error FundsNotSent();
@@ -92,6 +92,34 @@ contract TrainERC20 is ReentrancyGuard {
     uint256 amount;
     /// @notice The timelock (timestamp) after which the reward can be claimed.
     uint48 timelock;
+  }
+
+  /// @dev Represents the parameters required to call lock function
+  struct lockCallParams {
+    /// @notice The unique identifier for the HTLC.
+    bytes32 Id;
+    /// @notice The hash of the secret that must be provided to redeem the locked tokens.
+    bytes32 hashlock;
+    /// @notice The reward amount in ERC20 tokens granted to the caller of `redeem`.
+    uint256 reward;
+    /// @notice The timestamp after which the reward can be claimed.
+    uint48 rewardTimelock;
+    /// @notice The timestamp after which the locked funds can be refunded if not redeemed.
+    uint48 timelock;
+    /// @notice The recipient address that will receive the locked funds upon successful redemption.
+    address srcReceiver;
+    /// @notice The asset being locked in the HTLC.
+    string srcAsset;
+    /// @notice The name of the destination blockchain where the swap will be completed.
+    string dstChain;
+    /// @notice The recipient address on the destination chain that will receive the swapped asset.
+    string dstAddress;
+    /// @notice The asset on the destination chain that will be received upon successful swap.
+    string dstAsset;
+    /// @notice The amount of ERC20 tokens to be locked in the HTLC.
+    uint256 amount;
+    /// @notice The contract address of the ERC20 token being locked.
+    address tokenContract;
   }
 
   using SafeERC20 for IERC20;
@@ -202,16 +230,18 @@ contract TrainERC20 is ReentrancyGuard {
   ) external _validTimelock(timelock) nonReentrant returns (bytes32) {
     // Ensure the generated ID does not already exist to prevent overwriting.
     if (hasHTLC(Id)) revert HTLCAlreadyExists();
-    if (amount == 0) revert FundsNotSent(); // Ensure funds are sent.
     IERC20 token = IERC20(tokenContract);
 
     if (token.balanceOf(msg.sender) < amount) revert InsufficientBalance();
     if (token.allowance(msg.sender, address(this)) < amount) revert NoAllowance();
+    uint256 contractBalance = token.balanceOf(address(this));
     token.safeTransferFrom(msg.sender, address(this), amount);
+    contractBalance = token.balanceOf(address(this)) - contractBalance;
+    if (contractBalance == 0) revert FundsNotSent(); // Ensure funds are sent.
 
     // Store HTLC details.
     contracts[Id] = HTLC(
-      amount,
+      contractBalance,
       bytes32(bytes1(0x01)),
       uint256(1),
       tokenContract,
@@ -233,7 +263,7 @@ contract TrainERC20 is ReentrancyGuard {
       msg.sender,
       srcReceiver,
       srcAsset,
-      amount,
+      contractBalance,
       timelock,
       tokenContract
     );
@@ -280,91 +310,84 @@ contract TrainERC20 is ReentrancyGuard {
     bytes32 s,
     uint8 v
   ) external _exists(message.Id) _validTimelock(message.timelock) nonReentrant returns (bytes32) {
-    if (verifyMessage(message, r, s, v)) {
-      HTLC storage htlc = contracts[message.Id];
-      if (htlc.claimed == 2 || htlc.claimed == 3) revert AlreadyClaimed();
-      if (htlc.hashlock == bytes32(bytes1(0x01))) {
-        htlc.hashlock = message.hashlock;
-        htlc.timelock = message.timelock;
-      } else {
-        revert HashlockAlreadySet();
-      }
-      emit TokenLockAdded(message.Id, message.hashlock, message.timelock);
-      return message.Id;
+    HTLC storage htlc = contracts[message.Id];
+    bool verified = false;
+    if (htlc.sender.code.length == 0) {
+      verified = verifyMessage(message, r, s, v);
     } else {
-      revert InvalidSignature(); // Ensure valid signature.
+      bytes memory signature = abi.encodePacked(r, s, v);
+      bytes32 digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparatorV4(), hashMessage(message)));
+      verified = SignatureChecker.isValidERC1271SignatureNow(htlc.sender, digest, signature);
     }
+
+    if (!verified) revert InvalidSignature();
+    if (htlc.claimed == 2 || htlc.claimed == 3) revert AlreadyClaimed();
+    if (htlc.hashlock == bytes32(bytes1(0x01))) {
+      htlc.hashlock = message.hashlock;
+      htlc.timelock = message.timelock;
+    } else {
+      revert HashlockAlreadySet();
+    }
+    emit TokenLockAdded(message.Id, message.hashlock, message.timelock);
+    return message.Id;
   }
 
   /// @notice Locks ERC20 tokens in a new hashed time-locked contract (HTLC).
   /// @dev Transfers the specified amount of ERC20 tokens to the contract and emits a `TokenLocked` event.
-  /// @param Id The unique identifier of the HTLC.
-  /// @param hashlock The hash of the secret required for redemption.
-  /// @param reward The reward amount in ERC20 token granted to the caller of redeem.
-  /// @param rewardTimelock The timelock (timestamp) after which the reward can be claimed.
-  /// @param timelock The timestamp after which the funds can be refunded if not claimed.
-  /// @param srcReceiver The recipient of the funds if the HTLC is successfully redeemed.
-  /// @param srcAsset The asset being locked.
-  /// @param dstChain The destination blockchain for the swap.
-  /// @param dstAddress The recipient address on the destination chain.
-  /// @param dstAsset The asset on the destination chain.
-  /// @param amount The amount of ERC20 tokens to lock in the HTLC.
-  /// @param tokenContract The address of the ERC20 token contract.
+  /// @param params Struct containing all lock parameters.
   /// @return bytes32 The unique identifier of the created HTLC.
-  function lock(
-    bytes32 Id,
-    bytes32 hashlock,
-    uint256 reward,
-    uint48 rewardTimelock,
-    uint48 timelock,
-    address srcReceiver,
-    string calldata srcAsset,
-    string calldata dstChain,
-    string calldata dstAddress,
-    string calldata dstAsset,
-    uint256 amount,
-    address tokenContract
-  ) external _validTimelock(timelock) nonReentrant returns (bytes32) {
-    if (hasHTLC(Id)) revert HTLCAlreadyExists();
-    if (amount == 0) revert FundsNotSent();
-    if (rewardTimelock > timelock || rewardTimelock < block.timestamp) revert InvaliRewardTimelock();
-    IERC20 token = IERC20(tokenContract);
+  function lock(lockCallParams memory params) external nonReentrant returns (bytes32) {
+    if (hasHTLC(params.Id)) revert HTLCAlreadyExists();
+    if (block.timestamp + 1800 > params.timelock) revert InvalidTimelock();
+    if (params.rewardTimelock > params.timelock || params.rewardTimelock <= block.timestamp)
+      revert InvaliRewardTimelock();
+    IERC20 token = IERC20(params.tokenContract);
 
-    if (token.balanceOf(msg.sender) < amount + reward) revert InsufficientBalance();
-    if (token.allowance(msg.sender, address(this)) < amount + reward) revert NoAllowance();
+    if (token.balanceOf(msg.sender) < params.amount + params.reward) revert InsufficientBalance();
+    if (token.allowance(msg.sender, address(this)) < params.amount + params.reward) revert NoAllowance();
+    uint256 contractBalance = token.balanceOf(address(this));
+    token.safeTransferFrom(msg.sender, address(this), params.amount + params.reward);
+    contractBalance = token.balanceOf(address(this)) - contractBalance;
 
-    token.safeTransferFrom(msg.sender, address(this), amount + reward);
-    contracts[Id] = HTLC(
-      amount,
-      hashlock,
+    if (contractBalance == 0) revert FundsNotSent();
+    if (contractBalance < params.amount) {
+      params.reward = 0;
+      params.amount = contractBalance;
+    } else {
+      params.reward = contractBalance - params.amount;
+    }
+
+    contracts[params.Id] = HTLC(
+      params.amount,
+      params.hashlock,
       uint256(1),
-      tokenContract,
-      timelock,
+      params.tokenContract,
+      params.timelock,
       uint8(1),
       payable(msg.sender),
-      payable(srcReceiver)
+      payable(params.srcReceiver)
     );
 
-    if (reward != 0) {
-      rewards[Id] = Reward(reward, rewardTimelock);
+    if (params.reward != 0) {
+      rewards[params.Id] = Reward(params.reward, params.rewardTimelock);
     }
 
     emit TokenLocked(
-      Id,
-      hashlock,
-      dstChain,
-      dstAddress,
-      dstAsset,
+      params.Id,
+      params.hashlock,
+      params.dstChain,
+      params.dstAddress,
+      params.dstAsset,
       msg.sender,
-      srcReceiver,
-      srcAsset,
-      amount,
-      reward,
-      rewardTimelock,
-      timelock,
-      tokenContract
+      params.srcReceiver,
+      params.srcAsset,
+      params.amount,
+      params.reward,
+      params.rewardTimelock,
+      params.timelock,
+      params.tokenContract
     );
-    return Id;
+    return params.Id;
   }
 
   /// @notice Redeems funds from an HTLC using the correct secret.
@@ -434,24 +457,6 @@ contract TrainERC20 is ReentrancyGuard {
     return rewards[Id];
   }
 
-  /// @notice Generates a hash of the EIP-712 domain.
-  /// @dev Encodes and hashes the EIP-712 domain fields according to the specification.
-  /// @param domain The EIP-712 domain structure containing the domain details.
-  /// @return bytes32 The hashed representation of the EIP-712 domain.
-  function hashDomain(EIP712Domain memory domain) private pure returns (bytes32) {
-    return
-      keccak256(
-        abi.encode(
-          keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)'),
-          keccak256(bytes(domain.name)),
-          keccak256(bytes(domain.version)),
-          domain.chainId,
-          domain.verifyingContract,
-          domain.salt
-        )
-      );
-  }
-
   /// @notice Generates a hash of the `addLockMsg` structure.
   /// @dev Encodes and hashes the `addLockMsg` fields for use in EIP-712 signature verification.
   /// @param message The `addLockMsg` structure containing the HTLC details to be hashed.
@@ -476,7 +481,7 @@ contract TrainERC20 is ReentrancyGuard {
   /// @param v The `v` value of the ECDSA signature.
   /// @return bool Returns `true` if the signature is valid and matches the sender of the HTLC.
   function verifyMessage(addLockMsg calldata message, bytes32 r, bytes32 s, uint8 v) private view returns (bool) {
-    bytes32 digest = keccak256(abi.encodePacked('\x19\x01', DOMAIN_SEPARATOR, hashMessage(message)));
+    bytes32 digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparatorV4(), hashMessage(message)));
     return (ECDSA.recover(digest, v, r, s) == contracts[message.Id].sender);
   }
 
