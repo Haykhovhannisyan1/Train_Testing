@@ -237,7 +237,7 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
     uint256 contractBalance = token.balanceOf(address(this));
     token.safeTransferFrom(msg.sender, address(this), amount);
     contractBalance = token.balanceOf(address(this)) - contractBalance;
-    if (contractBalance == 0) revert FundsNotSent(); // Ensure funds are sent.
+    if (contractBalance != amount || amount == 0) revert FundsNotSent(); // Ensure funds are sent.
 
     // Store HTLC details.
     contracts[Id] = HTLC(
@@ -349,13 +349,7 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
     token.safeTransferFrom(msg.sender, address(this), params.amount + params.reward);
     contractBalance = token.balanceOf(address(this)) - contractBalance;
 
-    if (contractBalance == 0) revert FundsNotSent();
-    if (contractBalance < params.amount) {
-      params.reward = 0;
-      params.amount = contractBalance;
-    } else {
-      params.reward = contractBalance - params.amount;
-    }
+    if (contractBalance != params.amount + params.reward || params.amount == 0) revert FundsNotSent();
 
     contracts[params.Id] = HTLC(
       params.amount,
