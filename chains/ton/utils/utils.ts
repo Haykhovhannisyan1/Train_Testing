@@ -1,17 +1,17 @@
-import { Dictionary} from "@ton/core";
-import {  StringImpl } from "../wrappers/HashedTimeLockTON";
-import { Address } from "@ton/ton";
+import { Dictionary } from '@ton/core';
+import { StringImpl } from '../build/train/tact_Train';
+import { Address } from '@ton/ton';
 
 function delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function toNano(amount: string): bigint {
-    return BigInt(Math.floor(parseFloat(amount) * (10 ** 9)));
+    return BigInt(Math.floor(parseFloat(amount) * 10 ** 9));
 }
 
 function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function createIntMap(initialData: [bigint, bigint][]): Dictionary<bigint, bigint> {
@@ -45,12 +45,6 @@ function createAddrMap(initialData: [bigint, Address][]): Dictionary<bigint, Add
 }
 
 const hexToBase64 = (hex: string) =>
-    btoa(
-      String.fromCharCode(
-        ...(hex.match(/[0-9a-f]{2}/gi) ?? []).map((c) => parseInt(c, 16))
-      )
-    );
+    btoa(String.fromCharCode(...(hex.match(/[0-9a-f]{2}/gi) ?? []).map((c) => parseInt(c, 16))));
 
-      
-export { delay,toNano,sleep,createIntMap,createStrMap,createAddrMap,hexToBase64 };
-
+export { delay, toNano, sleep, createIntMap, createStrMap, createAddrMap, hexToBase64 };
