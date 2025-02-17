@@ -9,11 +9,14 @@ use core::hash::{HashStateExTrait, HashStateTrait};
 use core::poseidon::PoseidonTrait;
 use openzeppelin_utils::snip12::{SNIP12Metadata, StructHash, OffchainMessageHash};
 
+/// @dev the selctor of the AddLockMsg type.
 const MESSAGE_TYPE_HASH: felt252 =
     selector!(
         "\"AddLockMsg\"(\"Id\":\"u256\",\"hashlock\":\"u256\",\"timelock\":\"u256\")\"u256\"(\"low\":\"u128\",\"high\":\"u128\")"
     );
+/// @dev the selector of the u256 type.
 const U256_TYPE_HASH: felt252 = selector!("\"u256\"(\"low\":\"u128\",\"high\":\"u128\")");
+
 /// @dev Represents the data required to add a lock, used in the `addLockSig` function.
 #[derive(Drop, Copy, Hash)]
 struct AddLockMsg {
@@ -25,6 +28,7 @@ struct AddLockMsg {
     timelock: u256,
 }
 
+/// @dev used to hash AddLockMsg struct.
 impl StructHashImpl of StructHash<AddLockMsg> {
     fn hash_struct(self: @AddLockMsg) -> felt252 {
         let hash_state = PoseidonTrait::new();
@@ -36,6 +40,7 @@ impl StructHashImpl of StructHash<AddLockMsg> {
             .finalize()
     }
 }
+/// @dev used to hash u256 type.
 impl StructHashU256 of StructHash<u256> {
     fn hash_struct(self: @u256) -> felt252 {
         let mut state = PoseidonTrait::new();
@@ -45,6 +50,7 @@ impl StructHashU256 of StructHash<u256> {
     }
 }
 /// Required for hash computation.
+/// The name and version of our protocol.
 impl SNIP12MetadataImpl of SNIP12Metadata {
     fn name() -> felt252 {
         'Train'
@@ -243,7 +249,6 @@ mod TrainERC20 {
         #[key]
         Id: u256,
     }
-
 
     #[abi(embed_v0)]
     impl TrainERC20 of super::ITrainERC20<ContractState> {
@@ -609,7 +614,7 @@ mod TrainERC20 {
                 || is_valid_signature_felt == 1;
             assert(is_valid_signature, 'Invalid signature');
 
-            /// check that the hashlock is not set
+            // check that the hashlock is not set
             // and the funds are not claimed
             assert!(self.contracts.read(Id).claimed == 1, "Already Claimed");
             assert!(self.contracts.read(Id).hashlock == 0, "Hashlock Already Set");
