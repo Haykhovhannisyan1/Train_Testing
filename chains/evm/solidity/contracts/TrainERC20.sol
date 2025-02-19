@@ -230,18 +230,16 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
   ) external _validTimelock(timelock) nonReentrant returns (bytes32) {
     // Ensure the generated ID does not already exist to prevent overwriting.
     if (hasHTLC(Id)) revert HTLCAlreadyExists();
+    if (amount == 0) revert FundsNotSent(); // Ensure funds are sent.
     IERC20 token = IERC20(tokenContract);
 
     if (token.balanceOf(msg.sender) < amount) revert InsufficientBalance();
     if (token.allowance(msg.sender, address(this)) < amount) revert NoAllowance();
-    uint256 contractBalance = token.balanceOf(address(this));
     token.safeTransferFrom(msg.sender, address(this), amount);
-    contractBalance = token.balanceOf(address(this)) - contractBalance;
-    if (contractBalance != amount || amount == 0) revert FundsNotSent(); // Ensure funds are sent.
 
     // Store HTLC details.
     contracts[Id] = HTLC(
-      contractBalance,
+      amount,
       bytes32(bytes1(0x01)),
       uint256(1),
       tokenContract,
@@ -263,7 +261,7 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
       msg.sender,
       srcReceiver,
       srcAsset,
-      contractBalance,
+      amount,
       timelock,
       tokenContract
     );
@@ -338,6 +336,7 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
   /// @return bytes32 The unique identifier of the created HTLC.
   function lock(lockCallParams memory params) external nonReentrant returns (bytes32) {
     if (hasHTLC(params.Id)) revert HTLCAlreadyExists();
+    if (params.amount == 0) revert FundsNotSent();
     if (block.timestamp + 1800 > params.timelock) revert InvalidTimelock();
     if (params.rewardTimelock > params.timelock || params.rewardTimelock <= block.timestamp)
       revert InvaliRewardTimelock();
@@ -345,11 +344,7 @@ contract TrainERC20 is ReentrancyGuard, EIP712 {
 
     if (token.balanceOf(msg.sender) < params.amount + params.reward) revert InsufficientBalance();
     if (token.allowance(msg.sender, address(this)) < params.amount + params.reward) revert NoAllowance();
-    uint256 contractBalance = token.balanceOf(address(this));
     token.safeTransferFrom(msg.sender, address(this), params.amount + params.reward);
-    contractBalance = token.balanceOf(address(this)) - contractBalance;
-
-    if (contractBalance != params.amount + params.reward || params.amount == 0) revert FundsNotSent();
 
     contracts[params.Id] = HTLC(
       params.amount,
