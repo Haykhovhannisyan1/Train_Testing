@@ -507,27 +507,33 @@ mod TrainERC20 {
             if reward.amount != 0 {
                 // if redeem is called before the reward_timelock sender should get the reward back
                 if reward.timelock > get_block_timestamp().into() {
-                    IERC20Dispatcher { contract_address: htlc.tokenContract }
+                    let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                         .transfer(htlc.srcReceiver, htlc.amount);
-                    IERC20Dispatcher { contract_address: htlc.tokenContract }
+                    let reward_transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                         .transfer(htlc.sender, reward.amount);
+                    assert!(transfered && reward_transfered, "transfer failed");
+
                 } else {
                     // if the caller is the receiver then they should get and the amount,
                     // and the reward
                     if get_caller_address() == htlc.srcReceiver {
-                        IERC20Dispatcher { contract_address: htlc.tokenContract }
+                        let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                             .transfer(htlc.srcReceiver, htlc.amount + reward.amount);
+                        assert!(transfered, "transfer failed");
+
                     } else {
-                        IERC20Dispatcher { contract_address: htlc.tokenContract }
+                        let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                             .transfer(htlc.srcReceiver, htlc.amount);
-                        IERC20Dispatcher { contract_address: htlc.tokenContract }
+                        let reward_transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                             .transfer(get_caller_address(), reward.amount);
+                        assert!(transfered && reward_transfered, "transfer failed");
                     }
                 }
             } else {
                 // send the tokens to the receiver if the reward is set to zero
-                IERC20Dispatcher { contract_address: htlc.tokenContract }
+                let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                     .transfer(htlc.srcReceiver, htlc.amount);
+                assert!(transfered, "transfer failed");
             }
 
             self
@@ -558,11 +564,13 @@ mod TrainERC20 {
             // set claimed to 2 and send the tokens back to the sender
             self.contracts.entry(Id).claimed.write(2);
             if reward.amount == 0 {
-                IERC20Dispatcher { contract_address: htlc.tokenContract }
+                let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                     .transfer(htlc.sender, htlc.amount);
+                assert!(transfered, "transfer failed");
             } else {
-                IERC20Dispatcher { contract_address: htlc.tokenContract }
+                let transfered = IERC20Dispatcher { contract_address: htlc.tokenContract }
                     .transfer(htlc.sender, htlc.amount + reward.amount);
+                assert!(transfered, "transfer failed");
             }
 
             self.emit(TokenRefunded { Id: Id });
@@ -586,7 +594,7 @@ mod TrainERC20 {
             assert!(htlc.hashlock == 0, "Hashlock Already Set");
             assert!(get_caller_address() == htlc.sender, "Unauthorized Access");
 
-            // update the hashlcok and the timelock
+            // update the hashlock and the timelock
             self.contracts.entry(Id).hashlock.write(hashlock);
             self.contracts.entry(Id).timelock.write(timelock);
             self.emit(TokenLockAdded { Id: Id, hashlock: hashlock, timelock: timelock });
