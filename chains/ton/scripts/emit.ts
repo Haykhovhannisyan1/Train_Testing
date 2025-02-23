@@ -45,7 +45,7 @@ async function parseEmit(address: string, token: string, index: number) {
 const address = process.env.CONTRACT!; 
 const token = process.env.TOKEN!; 
 
-parseEmit(address, token, 0)
+parseEmit(address, token, 1)
     .then(result => console.log(result))
     .catch(error => console.error("Error processing request:", error));
 

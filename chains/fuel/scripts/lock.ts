@@ -1,42 +1,47 @@
 import { Contract, Wallet, Provider, Address, DateTime, WalletUnlocked } from 'fuels';
 import * as fs from 'fs';
 import * as path from 'path';
+require('dotenv').config();
 
 const filePath = path.join(__dirname, '../out/release/fuel-abi.json');
 const contractAbi = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+const contractAddressString = process.env.CONTRACT as string;
 
-const contractAddressString = '0x00f3dfc843089523a41a08a611ad39eef57de6ebdb58915840ed81d3fe9a5476';
+async function lock() {
+  const providerUrl = process.env.PROVIDER?.trim();
+  if (!providerUrl || !providerUrl.startsWith('http')) {
+    throw new Error('Invalid PROVIDER URL. Please check your .env file.');
+  }
 
-async function getWalletBalances() {
-  const provider = await Provider.create('https://testnet.fuel.network/v1/graphql');
-  const mnemonic = '';
+  const provider = new Provider(providerUrl);
+  const mnemonic = process.env.MNEMONIC as string;
   const wallet: WalletUnlocked = Wallet.fromMnemonic(mnemonic);
   wallet.connect(provider);
 
-// NOTE: All string variables should be padded to ensure they have 64 characters,
-// as the contract accepts only the str[64] type for string inputs.
-  const Id = 101n;
-  const dstChain = "TON".padEnd(64, ' ');
-  const dstAsset = "Toncoin".padEnd(64, ' ');
-  const dstAddress = "0QAS8JNB0G4zVkdxABCLVG-Vy3KXE3W3zz1yxpnfu4J-B40y".padEnd(64, ' ');
-  const srcAsset = "ETH".padEnd(64, ' ');
-  const srcReceiver = {"bits":"0x6364b23e8c34d46d0b68d20e0c1463230a9243a1dd710a7dd8b32dfb927af53a"};
-  const currentUnixTime = Math.floor(Date.now() / 1000) + 10;
-  const timelock = DateTime.fromUnixSeconds(currentUnixTime).toTai64();   
-  const hashlock = "0x3b7674662e6569056cef73dab8b7809085a32beda0e8eb9e9b580cfc2af22a55";        
+  const Id = 2n;
+  const dstChain = 'TON'.padEnd(64, ' ');
+  const dstAsset = 'Toncoin'.padEnd(64, ' ');
+  const dstAddress = '0QAS8JNB0G4zVkdxABCLVG-Vy3KXE3W3zz1yxpnfu4J-B40y'.padEnd(64, ' ');
+  const srcAsset = 'ETH'.padEnd(64, ' ');
+  const srcReceiver = { bits: '0x8d08AAa3252C67dA78f5F4Dd2396aF1a8c231527BFEeB4a96743c646dBE9C9B2' };
+  const currentUnixTime = Math.floor(Date.now() / 1000) + 900;
+  const timelock = DateTime.fromUnixSeconds(currentUnixTime).toTai64();
+  const hashlock = '0x3b7674662e6569056cef73dab8b7809085a32beda0e8eb9e9b580cfc2af22a55';
+  const reward = 2n;
+  const rewardTimelock = DateTime.fromUnixSeconds(currentUnixTime - 300).toTai64();
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, wallet);
 
   try {
     const { transactionId, waitForResult } = await contractInstance.functions
-      .lock(Id,hashlock,timelock,srcReceiver,srcAsset,dstChain, dstAsset, dstAddress)
+      .lock(Id, hashlock,reward,rewardTimelock, timelock, srcReceiver, srcAsset, dstChain, dstAsset, dstAddress)
       .callParams({
-        forward: [78, provider.getBaseAssetId()],
+        forward: [3, await provider.getBaseAssetId()],
       })
       .call();
 
-    const { logs,value } = await waitForResult();
+    const { logs, value } = await waitForResult();
 
     console.log('tx id: ', transactionId);
     console.log('lock function logs:', logs);
@@ -46,4 +51,4 @@ async function getWalletBalances() {
   }
 }
 
-getWalletBalances().catch(console.error);
+lock().catch(console.error);

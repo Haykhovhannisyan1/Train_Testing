@@ -1,44 +1,44 @@
-//   _____ ____      _    ___ _   _      ____  ____   ___ _____ ___   ____ ___  _
-//  |_   _|  _ \    / \  |_ _| \ | |    |  _ \|  _ \ / _ \_   _/ _ \ / ___/ _ \| |
-//    | | | |_) |  / _ \  | ||  \| |    | |_) | |_) | | | || || | | | |  | | | | |
-//    | | |  _ <  / ___ \ | || |\  |    |  __/|  _ <| |_| || || |_| | |__| |_| | |___
-//    |_| |_| \_\/_/   \_\___|_| \_|    |_|   |_| \_\\___/ |_| \___/ \____\___/|_____|
+//                                                                                       ......
+//             ....                                                                      .......
+//             .....                                                                     .......
+//             .....                                                                      ....
+//             .....
+//             .....
+//             .....               ...        .......            .......                   ...        ...         .....
+//       ...................      .....  .............      ..................            .....      .....  .................
+//       ...................      ....................   .......................          .....      ..........................
+//       ...................      ............          ............ .............        .....      ..............  ............
+//             .....              ........            ........             ........       .....      ........              .......
+//             .....              ......              ......                 .......      .....      .......                .......
+//             .....              ......             ......                    .....      .....      ......                  ......
+//             .....              .....             ......                     ......     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             ......                      .....     .....      .....                    .....
+//             .....              .....              ......                    ......     .....      .....                    .....
+//             .....              .....              .......                 ........     .....      .....                    .....
+//             .......            .....               ........              .........     .....      .....                    .....
+//              .............     .....                .........         ............     .....      .....                    .....
+//               .............    .....                  ...................... .....     .....      .....                    .....
+//                 ...........    .....                     .................   .....     .....      .....                    .....
+//                     ......      ...                           ........        ...       ...        ...                      ...
 
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol';
+import '@openzeppelin/contracts/utils/cryptography/EIP712.sol';
 
 /// @title Train Contract
 /// @notice Implements the Train protocol, enabling secure and atomic cross-chain swaps.
 /// @dev Manages HTLCs for trustless cross-chain transactions with event-based updates.
 
-/// @dev Represents the EIP-712 domain for signature verification.
-struct EIP712Domain {
-  string name;
-  string version;
-  uint256 chainId;
-  address verifyingContract;
-  bytes32 salt;
-}
-
-contract Train is ReentrancyGuard {
+contract Train is ReentrancyGuard, EIP712 {
   using ECDSA for bytes32;
 
-  bytes32 private immutable DOMAIN_SEPARATOR;
-
-  /// @dev Sets up the EIP-712 domain details used for verifying signed messages.
-  constructor() {
-    DOMAIN_SEPARATOR = hashDomain(
-      EIP712Domain({
-        name: 'Train',
-        version: '1',
-        chainId: block.chainid,
-        verifyingContract: address(this),
-        salt: 0x2e4ff7169d640efc0d28f2e302a56f1cf54aff7e127eededda94b3df0946f5c0
-      })
-    );
-  }
+  constructor() EIP712('Train', '1') {}
 
   /// @dev Custom errors to simplify failure handling in the contract.
   error FundsNotSent();
@@ -279,20 +279,26 @@ contract Train is ReentrancyGuard {
     bytes32 s,
     uint8 v
   ) external _exists(message.Id) _validTimelock(message.timelock) nonReentrant returns (bytes32) {
-    if (verifyMessage(message, r, s, v)) {
-      HTLC storage htlc = contracts[message.Id];
-      if (htlc.claimed == 2 || htlc.claimed == 3) revert AlreadyClaimed();
-      if (htlc.hashlock == bytes32(bytes1(0x01))) {
-        htlc.hashlock = message.hashlock;
-        htlc.timelock = message.timelock;
-      } else {
-        revert HashlockAlreadySet();
-      }
-      emit TokenLockAdded(message.Id, message.hashlock, message.timelock);
-      return message.Id;
+    HTLC storage htlc = contracts[message.Id];
+    bool verified = false;
+    if (htlc.sender.code.length == 0) {
+      verified = verifyMessage(message, r, s, v);
     } else {
-      revert InvalidSignature(); // Ensure valid signature.
+      bytes memory signature = abi.encodePacked(r, s, v);
+      bytes32 digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparatorV4(), hashMessage(message)));
+      verified = SignatureChecker.isValidERC1271SignatureNow(htlc.sender, digest, signature);
     }
+
+    if (!verified) revert InvalidSignature();
+    if (htlc.claimed == 2 || htlc.claimed == 3) revert AlreadyClaimed();
+    if (htlc.hashlock == bytes32(bytes1(0x01))) {
+      htlc.hashlock = message.hashlock;
+      htlc.timelock = message.timelock;
+    } else {
+      revert HashlockAlreadySet();
+    }
+    emit TokenLockAdded(message.Id, message.hashlock, message.timelock);
+    return message.Id;
   }
 
   /// @notice Locks funds in a new hashed time-locked contract (HTLC).
@@ -319,10 +325,11 @@ contract Train is ReentrancyGuard {
     string calldata dstChain,
     string calldata dstAddress,
     string calldata dstAsset
-  ) external payable _validTimelock(timelock) nonReentrant returns (bytes32) {
+  ) external payable nonReentrant returns (bytes32) {
     if (hasHTLC(Id)) revert HTLCAlreadyExists();
     if (msg.value <= reward || msg.value == 0) revert FundsNotSent();
-    if (rewardTimelock > timelock || rewardTimelock < block.timestamp) revert InvaliRewardTimelock();
+    if (block.timestamp + 1800 > timelock) revert InvalidTimelock();
+    if (rewardTimelock > timelock || rewardTimelock <= block.timestamp) revert InvaliRewardTimelock();
     contracts[Id] = HTLC(
       msg.value - reward,
       hashlock,
@@ -403,24 +410,6 @@ contract Train is ReentrancyGuard {
     return rewards[Id];
   }
 
-  /// @notice Generates a hash of the EIP-712 domain.
-  /// @dev Encodes and hashes the EIP-712 domain fields according to the specification.
-  /// @param domain The EIP-712 domain structure containing the domain details.
-  /// @return bytes32 The hashed representation of the EIP-712 domain.
-  function hashDomain(EIP712Domain memory domain) private pure returns (bytes32) {
-    return
-      keccak256(
-        abi.encode(
-          keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)'),
-          keccak256(bytes(domain.name)),
-          keccak256(bytes(domain.version)),
-          domain.chainId,
-          domain.verifyingContract,
-          domain.salt
-        )
-      );
-  }
-
   /// @notice Generates a hash of the `addLockMsg` structure.
   /// @dev Encodes and hashes the `addLockMsg` fields for use in EIP-712 signature verification.
   /// @param message The `addLockMsg` structure containing the HTLC details to be hashed.
@@ -445,7 +434,7 @@ contract Train is ReentrancyGuard {
   /// @param v The `v` value of the ECDSA signature.
   /// @return bool Returns `true` if the signature is valid and matches the sender of the HTLC.
   function verifyMessage(addLockMsg calldata message, bytes32 r, bytes32 s, uint8 v) private view returns (bool) {
-    bytes32 digest = keccak256(abi.encodePacked('\x19\x01', DOMAIN_SEPARATOR, hashMessage(message)));
+    bytes32 digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparatorV4(), hashMessage(message)));
     return (ECDSA.recover(digest, v, r, s) == contracts[message.Id].sender);
   }
 

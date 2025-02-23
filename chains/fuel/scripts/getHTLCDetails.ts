@@ -1,34 +1,39 @@
 import { Contract, Wallet, Provider, Address,  WalletUnlocked } from 'fuels';
 import * as fs from 'fs';
 import * as path from 'path';
+require('dotenv').config();
 
 const filePath = path.join(__dirname, '../out/release/fuel-abi.json');
 const contractAbi = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-const contractAddressString = '0x00f3dfc843089523a41a08a611ad39eef57de6ebdb58915840ed81d3fe9a5476';
+const contractAddressString = process.env.CONTRACT as string;
 
-async function getWalletBalances() {
-  const provider = await Provider.create('https://testnet.fuel.network/v1/graphql');
-  const mnemonic = '';
+async function getHTLCDetials() {
+  const providerUrl = process.env.PROVIDER?.trim();
+  if (!providerUrl || !providerUrl.startsWith('http')) {
+    throw new Error('Invalid PROVIDER URL. Please check your .env file.');
+  }
+  const provider = new Provider(providerUrl);
+  const mnemonic = process.env.MNEMONIC as string;
   const wallet: WalletUnlocked = Wallet.fromMnemonic(mnemonic);
   wallet.connect(provider);
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, wallet);
-  const senderAddr = {"bits": "0xb926273e0f7b0baa022f78fac77c428bb2a5034508630d6bd9c076d2d512b899"}
+  const id = 2n;
 
   try {
     const { transactionId, waitForResult } = await contractInstance.functions
-      .get_contracts(senderAddr)
+      .get_htlc_details(id)
       .call();
 
     const { value } = await waitForResult();
 
     console.log('tx id: ', transactionId);
-    console.log('get_details function result:', value);
+    console.log('get_htlc_details function result:', value);
   } catch (error) {
     console.error('Error calling commit function:', error);
   }
 }
 
-getWalletBalances().catch(console.error);
+getHTLCDetials().catch(console.error);

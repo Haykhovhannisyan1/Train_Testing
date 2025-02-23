@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { contractAddress } from 'ton';
 import { TrainJetton as Train } from '../build/jetton_train/tact_TrainJetton';
 import { prepareTactDeployment } from '@tact-lang/deployer';
 

@@ -1,22 +1,27 @@
 import { Contract, Wallet, Provider, Address,WalletUnlocked } from 'fuels';
 import * as fs from 'fs';
 import * as path from 'path';
+require('dotenv').config();
 
 const filePath = path.join(__dirname, '../out/release/fuel-abi.json');
 const contractAbi = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+const contractAddressString = process.env.CONTRACT as string;
 
-const contractAddressString = '0x81bb60bf7cdadcf4061a932685a68871dfe14eab4dcfead6059fe4f8f2651737';
+async function redeem() {
+  const providerUrl = process.env.PROVIDER?.trim();
+  if (!providerUrl || !providerUrl.startsWith('http')) {
+    throw new Error('Invalid PROVIDER URL. Please check your .env file.');
+  }
 
-async function getWalletBalances() {
-  const provider = await Provider.create('https://testnet.fuel.network/v1/graphql');
-  const mnemonic = '';
-  const wallet: WalletUnlocked = Wallet.fromMnemonic(mnemonic);
+  const provider = new Provider(providerUrl);
+  const mnemonic = process.env.MNEMONIC as string;
+  const wallet = Wallet.fromMnemonic(mnemonic);
   wallet.connect(provider);
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, wallet);
-  const Id = 1n;
-  const secret = 33648946896879551350753991616036334622602839139780100591470253765180571691018n;       
+  const Id = 3n;
+  const secret = 109730872847609188478309451572148122150330802072000585050763249942403213063436n;       
 
   try {
     const { transactionId, waitForResult } = await contractInstance.functions
@@ -33,4 +38,4 @@ async function getWalletBalances() {
   }
 }
 
-getWalletBalances().catch(console.error);
+redeem().catch(console.error);
