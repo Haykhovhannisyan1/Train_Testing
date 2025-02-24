@@ -5,8 +5,8 @@ async function signHTLC() {
     const domain = {
       name: 'Train',
       version: '1',
-      chainId: 11155111,
-      verifyingContract: '0xeb9B3351a095647dee460AD483DcC2c5D21487CE',
+      chainId: 300,
+      verifyingContract: '0x1534451B776C3C8D09313d41F9a7b7Caa87e7934',
     };
 
     const domainSeparator = ethers.keccak256(
@@ -33,9 +33,9 @@ async function signHTLC() {
     };
 
     const message = {
-      Id: '0x21cca7f40cb32536e5b648b51d4ea800a107fce6c98c393dbea187ba8c4dca4a',
-      hashlock: '0x3b7674662e6569056cef73dab8b7809085a32beda0e8eb9e9b580cfc2af22a55',
-      timelock: 99999999999,
+      Id: '0x4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
+      hashlock: '0xddfafe7925d46e633decb4cb3c933b4c2f7d56679487f4b88ea3e6422eb2b81c',
+      timelock: 1740143201,
     };
 
     const privateKey =  process.env.PRIV_KEY;

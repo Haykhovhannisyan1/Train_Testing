@@ -1,6 +1,17 @@
-require("@nomicfoundation/hardhat-toolbox");
-require('@nomicfoundation/hardhat-ignition');
-require("dotenv").config();
+require('dotenv').config();
+
+const isZKsyncNetwork = process.env.HARDHAT_NETWORK?.toLowerCase().includes('zksync');
+
+if (isZKsyncNetwork) {
+  require('@matterlabs/hardhat-zksync');
+  require('@matterlabs/hardhat-zksync-verify');
+  require('@matterlabs/hardhat-zksync-solc');
+  require('@matterlabs/hardhat-zksync-deploy');
+} else {
+  require('@nomicfoundation/hardhat-toolbox');
+  require('@openzeppelin/hardhat-upgrades');
+  require('@nomicfoundation/hardhat-ignition');
+}
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   ignition: {
@@ -12,6 +23,10 @@ module.exports = {
   },
   solidity: {
     version: '0.8.23',
+    zksolc: {
+      version: '1.5.11',
+      settings: {},
+    },
     settings: {
       optimizer: {
         enabled: true,
@@ -21,6 +36,22 @@ module.exports = {
     },
   },
   networks: {
+    ZKsyncEraSepolia: {
+      url: 'https://sepolia.era.zksync.dev',
+      ethNetwork: 'sepolia',
+      chainId: 300,
+      zksync: true,
+      accounts: [process.env.PRIV_KEY],
+      verifyURL: 'https://explorer.sepolia.era.zksync.dev/contract_verification',
+    },
+    ZKsyncEraMainnet: {
+      url: 'https://mainnet.era.zksync.io',
+      ethNetwork: 'mainnet',
+      chainId: 324,
+      zksync: true,
+      accounts: [process.env.priv_key_zk_sync],
+      verifyURL: 'https://zksync2-mainnet-explorer.zksync.io/contract_verification',
+    },
     mainnet: {
       url: process.env.ethRPC,
       accounts: [process.env.mainnet],
@@ -85,8 +116,12 @@ module.exports = {
       url: 'https://rpc.minato.soneium.org/',
       accounts: [process.env.PRIV_KEY],
     },
+    hardhat: {
+      zksync: true,
+    },
   },
   etherscan: {
+    enabled: true,
     apiKey: {
       berachain: process.env.berachain,
       unichainSepolia: process.env.unichainSepolia,
@@ -102,9 +137,28 @@ module.exports = {
       mainnet: process.env.sepolia,
       optimisticEthereum: process.env.optimismSepolia,
       arbitrumOne: process.env.arbitrumSepolia,
-      base: process.env.baseAPIKey
+      base: process.env.baseAPIKey,
+      zkSyncEraSepolia: process.env.zk_sync,
+      zkSyncEraMainnet: process.env.zk_sync,
     },
     customChains: [
+      {
+        network: 'zkSyncEraMainnet',
+        chainId: 324,
+        urls: {
+          apiURL: 'https://zksync2-mainnet-explorer.zksync.io/contract_verification',
+          browserURL: 'https://explorer.zksync.io',
+          verifyURL: 'https://zksync2-mainnet-explorer.zksync.io/contract_verification',
+        },
+      },
+      {
+        network: 'zkSyncEraSepolia',
+        chainId: 300,
+        urls: {
+          apiURL: 'https://api-sepolia-era.zksync.network/api',
+          browserURL: 'https://sepolia.explorer.zksync.io',
+        },
+      },
       {
         network: 'mantleSepolia',
         chainId: 5003,
