@@ -1,29 +1,29 @@
-            //               ............                                                                                                          ......                                                    
-            //          ......................                           ....                                                                      .......                                                   
-            //       ............................                        .....                                                                     .......                                                   
-            //      .............................                        .....                                                                      ....                                                     
-            //      ..............................                       .....                                                                                                                               
-            //      ..............................                       .....                                                                                                                               
-            //      ....                      ....                       .....               ...        .......            .......                   ...        ...         .....                            
-            //      ....                      ....                 ...................      .....  .............      ..................            .....      .....  .................                      
-            //      ....                      ....                 ...................      ....................   .......................          .....      ..........................                    
-            //      .....                    .....                 ...................      ............          ............ .............        .....      ..............  ............                  
-            //      ........              ........                       .....              ........            ........             ........       .....      ........              .......                 
-            //      ............      ............                       .....              ......              ......                 .......      .....      .......                .......                
-            //      ..............................                       .....              ......             ......                    .....      .....      ......                  ......                
-            //      ..............................                       .....              .....             ......                     ......     .....      .....                    .....                
-            //      ..............................                       .....              .....             .....                       .....     .....      .....                    .....                
-            //       ............................                        .....              .....             .....                       .....     .....      .....                    .....                
-            //        ..........................                         .....              .....             .....                       .....     .....      .....                    .....                
-            //         ........................                          .....              .....             ......                      .....     .....      .....                    .....                
-            //           ....................                            .....              .....              ......                    ......     .....      .....                    .....                
-            //           .....          .....                            .....              .....              .......                 ........     .....      .....                    .....                
-            //         ........................                          .......            .....               ........              .........     .....      .....                    .....                
-            //       ......                .....                          .............     .....                .........         ............     .....      .....                    .....                
-            //     ...............................                         .............    .....                  ...................... .....     .....      .....                    .....                
-            //    ..................................                         ...........    .....                     .................   .....     .....      .....                    .....                
-            //     ..                           ...                              ......      ...                           ........        ...       ...        ...                      ...                 
-                                                                                                                                                                                                          
+//                                                                                       ......
+//             ....                                                                      .......
+//             .....                                                                     .......
+//             .....                                                                      ....
+//             .....
+//             .....
+//             .....               ...        .......            .......                   ...        ...         .....
+//       ...................      .....  .............      ..................            .....      .....  .................
+//       ...................      ....................   .......................          .....      ..........................
+//       ...................      ............          ............ .............        .....      ..............  ............
+//             .....              ........            ........             ........       .....      ........              .......
+//             .....              ......              ......                 .......      .....      .......                .......
+//             .....              ......             ......                    .....      .....      ......                  ......
+//             .....              .....             ......                     ......     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             .....                       .....     .....      .....                    .....
+//             .....              .....             ......                      .....     .....      .....                    .....
+//             .....              .....              ......                    ......     .....      .....                    .....
+//             .....              .....              .......                 ........     .....      .....                    .....
+//             .......            .....               ........              .........     .....      .....                    .....
+//              .............     .....                .........         ............     .....      .....                    .....
+//               .............    .....                  ...................... .....     .....      .....                    .....
+//                 ...........    .....                     .................   .....     .....      .....                    .....
+//                     ......      ...                           ........        ...       ...        ...                      ...
+     
 
 contract;
 
@@ -92,7 +92,7 @@ abi Train {
     fn get_reward_details(Id: u256) -> Option<Reward>;
 }
 
-// Events for logging HTLC state changes
+/// Emitted when an HTLC is created and funds are committed.
 pub struct TokenCommitted {
     hopChains: [str[64]; 5],
     hopAssets: [str[64]; 5],
@@ -109,6 +109,7 @@ pub struct TokenCommitted {
     assetId: AssetId,
 }
 
+/// Emitted when an HTLC is locked with a hashlock and timelock.
 pub struct TokenLocked {
     Id: u256,
     hashlock: b256,
@@ -125,16 +126,19 @@ pub struct TokenLocked {
     assetId: AssetId,
 }
 
+/// Emitted when a hashlock and timelock are added to an existing HTLC.
 pub struct TokenLockAdded {
     Id: u256,
     hashlock: b256,
     timelock: u64,
 }
 
+/// Emitted when funds are refunded from an HTLC after the timelock expires.
 pub struct TokenRefuned {
     Id: u256,
 }
 
+/// Emitted when funds are redeemed from an HTLC using the correct secret.
 pub struct TokenRedeemed {
     Id: u256,
     redeemAddress: Identity,
@@ -142,7 +146,7 @@ pub struct TokenRedeemed {
     hashlock: b256,
 }
 
-// Struct defining an HTLC contract state
+/// Represents a hashed time-locked contract (HTLC) used in the Train protocol.
 pub struct HTLC {
     amount: u64,
     hashlock: b256,
@@ -154,13 +158,13 @@ pub struct HTLC {
     claimed: u8,
 }
 
-// Reward struct for incentivizing early redeemers
+/// Reward struct for incentivizing early redeemers
 pub struct Reward {
     amount: u64,
     timelock: u64,
 }
 
-// Storage for HTLCs and rewards
+/// Storage for HTLCs and rewards
 storage {
     contracts: StorageMap<u256, HTLC> = StorageMap::<u256, HTLC> {},
     rewards: StorageMap<u256, Reward> = StorageMap::<u256, Reward> {},
@@ -184,8 +188,11 @@ fn has_reward(Id: u256) -> bool {
     }
 }
 
-// Implementation of the HTLC functions
+// Implementation of the PreHTLC functions
 impl Train for Contract {
+
+/// Creates and commits a new hashed time-locked contract (HTLC).
+/// Locks funds in the contract and emits a `TokenCommitted` event.
     #[payable]
     #[storage(read, write)]
     fn commit(
@@ -237,6 +244,8 @@ impl Train for Contract {
         Id
     }
 
+  /// Refunds the locked funds from an HTLC after the timelock expires.
+  /// Can only be called if the HTLC exists and the timelock has passed. Emits a `TokenRefunded` event.
     #[storage(read, write)]
     fn refund(Id: u256) -> bool {
         require(has_htlc(Id), "Contract Does Not Exist");
@@ -260,12 +269,14 @@ impl Train for Contract {
         true
     }
 
+/// Adds a hashlock and updates the timelock for an existing HTLC.
+/// Can only be called by the HTLC's creator if the HTLC exists and has not been claimed. Emits a `TokenLockAdded` event.
     #[storage(read, write)]
     fn add_lock(Id: u256, hashlock: b256, timelock: u64) -> u256 {
         require(has_htlc(Id), "Contract Does Not Exist");
         require(timelock > timestamp() + 900, "Not Future Timelock");
-
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
+        require(msg_sender().unwrap().as_address().unwrap() == htlc.sender,"No Allowance");
         require(htlc.claimed == 1, "Already Claimed");
         require(htlc.hashlock == b256::from(1), "Hashlock Already Set");
 
@@ -278,7 +289,9 @@ impl Train for Contract {
         Id
     }
 
-        #[storage(read, write)]
+  /// Adds a hashlock and updates the timelock for an existing HTLC using a signed message.
+  /// Verifies the provided signature and updates the HTLC if valid. Emits a `TokenLockAdded` event.
+    #[storage(read, write)]
     fn add_lock_sig(signature: B512, Id: u256, hashlock: b256, timelock: u64) -> u256 {
         require(has_htlc(Id), "Contract Does Not Exist");
         require(timelock > timestamp() + 900, "Not Future Timelock");
@@ -302,6 +315,8 @@ impl Train for Contract {
         Id
     }
 
+  /// Locks funds in a new hashed time-locked contract (HTLC).
+  /// Creates an HTLC with the specified details and emits a `TokenLocked` event.
     #[payable]
     #[storage(read, write)]
     fn lock(
@@ -318,7 +333,7 @@ impl Train for Contract {
     ) -> u256 {
         require(!has_htlc(Id), "Contract Already Exists");
         require(msg_amount() > reward, "Funds Not Sent");
-        require(timelock > timestamp() + 900, "Not Future Timelock");
+        require(timelock > timestamp() + 1800, "Not Future Timelock");
         require(rewardTimelock < timelock && rewardTimelock > timestamp(), "Invalid Reward Timelock");
 
         let htlc = HTLC {
@@ -363,6 +378,8 @@ impl Train for Contract {
         Id
     }
 
+/// Redeems funds from an HTLC using the correct secret.
+/// Verifies the provided secret against the hashlock and transfers the funds to the recipient. Emits a `TokenRedeemed` event.
     #[storage(read, write)]
     fn redeem(Id: u256, secret: u256) -> bool {
         require(has_htlc(Id), "Contract Does Not Exist");
@@ -412,6 +429,8 @@ impl Train for Contract {
         true
     }
 
+/// Retrieves the details of a specific HTLC.
+/// Returns the HTLC structure associated with the given identifier.
     #[storage(read)]
     fn get_htlc_details(Id: u256) -> Option<HTLC> {
         match storage.contracts.get(Id).try_read() {
@@ -423,6 +442,8 @@ impl Train for Contract {
         }
     }
 
+/// Retrieves the reward details for a specific HTLC.
+/// Returns the reward amount and the timelock after which it can be claimed.
     #[storage(read)]
     fn get_reward_details(Id: u256) -> Option<Reward> {
         match storage.rewards.get(Id).try_read() {

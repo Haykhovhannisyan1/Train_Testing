@@ -437,6 +437,18 @@
       "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "attributes": [
         {
+          "name": "doc-comment",
+          "arguments": [
+            " Adds a hashlock and updates the timelock for an existing HTLC.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Can only be called by the HTLC's creator if the HTLC exists and has not been claimed. Emits a `TokenLockAdded` event.\r"
+          ]
+        },
+        {
           "name": "storage",
           "arguments": [
             "read",
@@ -467,6 +479,18 @@
       "name": "add_lock_sig",
       "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Adds a hashlock and updates the timelock for an existing HTLC using a signed message.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Verifies the provided signature and updates the HTLC if valid. Emits a `TokenLockAdded` event.\r"
+          ]
+        },
         {
           "name": "storage",
           "arguments": [
@@ -523,6 +547,18 @@
       "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "attributes": [
         {
+          "name": "doc-comment",
+          "arguments": [
+            " Creates and commits a new hashed time-locked contract (HTLC).\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Locks funds in the contract and emits a `TokenCommitted` event.\r"
+          ]
+        },
+        {
           "name": "payable",
           "arguments": []
         },
@@ -546,6 +582,18 @@
       "output": "2b4a62e8055c70f8b1030ea7e332c3ba1288d018326932966c12e739e3b39747",
       "attributes": [
         {
+          "name": "doc-comment",
+          "arguments": [
+            " Retrieves the details of a specific HTLC.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Returns the HTLC structure associated with the given identifier.\r"
+          ]
+        },
+        {
           "name": "storage",
           "arguments": [
             "read"
@@ -563,6 +611,18 @@
       "name": "get_reward_details",
       "output": "a639b86dae6d02ef455d2a28f8eedd436f8d828c7ddc22da6b739fc9abb6562c",
       "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Retrieves the reward details for a specific HTLC.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Returns the reward amount and the timelock after which it can be claimed.\r"
+          ]
+        },
         {
           "name": "storage",
           "arguments": [
@@ -618,6 +678,18 @@
       "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "attributes": [
         {
+          "name": "doc-comment",
+          "arguments": [
+            " Locks funds in a new hashed time-locked contract (HTLC).\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Creates an HTLC with the specified details and emits a `TokenLocked` event.\r"
+          ]
+        },
+        {
           "name": "payable",
           "arguments": []
         },
@@ -645,6 +717,18 @@
       "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
       "attributes": [
         {
+          "name": "doc-comment",
+          "arguments": [
+            " Redeems funds from an HTLC using the correct secret.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Verifies the provided secret against the hashlock and transfers the funds to the recipient. Emits a `TokenRedeemed` event.\r"
+          ]
+        },
+        {
           "name": "storage",
           "arguments": [
             "read",
@@ -663,6 +747,18 @@
       "name": "refund",
       "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
       "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Refunds the locked funds from an HTLC after the timelock expires.\r"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Can only be called if the HTLC exists and the timelock has passed. Emits a `TokenRefunded` event.\r"
+          ]
+        },
         {
           "name": "storage",
           "arguments": [
