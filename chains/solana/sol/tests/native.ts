@@ -23,6 +23,7 @@ describe("HTLC", () => {
   const SECRETArray: number[] = Array.from(SECRET);
   const HASHLOCKArray: number[] = Array.from(HASHLOCK);
   const AMOUNT = 0.01 * anchor.web3.LAMPORTS_PER_SOL;
+  const REWARD = 0.001 * anchor.web3.LAMPORTS_PER_SOL;
   const DSTCHAIN = "ETHEREUM_SEPOLIA";
   const DSTASSET = "ETH";
   const SRCASSET = "SOL";
@@ -37,6 +38,7 @@ describe("HTLC", () => {
   console.log(`${SECRETArray} SECRET`);
   console.log(`${Idhex} ID`);
 
+  let signature: Uint8Array;
   let alice: anchor.web3.Keypair;
   let user: anchor.Wallet;
   let bob: anchor.web3.Keypair;
@@ -84,124 +86,142 @@ describe("HTLC", () => {
     pda = await getHTLC(ID);
     signature = await ed.sign(MSG, alice.secretKey.slice(0, 32));
   });
-  it("create prehtlc", async () => {
+  // it("create prehtlc", async () => {
 
-    const TIME = new Date().getTime() + 12000;
-    const TIMELOCK = new anchor.BN(TIME / 1000);
-    console.log("lamport balance of wallet before commit",
-      await anchor.getProvider().connection.getBalance(wallet.publicKey));
-    const commitTx = await program.methods
-      .commit(IDArray, HOPCHAINS, HOPASSETS, HOPADDRESSES, DSTCHAIN, DSTASSET, DSTADDRESS, SRCASSET, wallet.publicKey, TIMELOCK, new anchor.BN(AMOUNT), pda.htlcBump)
-      .accountsPartial({
-        sender: user.publicKey,
-        htlc: pda.htlc,
-      })
-      .signers([user.payer])
-      .rpc();
-
-    console.log("lamport balance of wallet before addLock",
-      await anchor.getProvider().connection.getBalance(wallet.publicKey));
-    console.log("lamport balance of Alice-wallet before addLock",
-      await anchor.getProvider().connection.getBalance(user.publicKey));
-
-    const signAddLock = await program.methods.addLock(IDArray, HASHLOCKArray, TIMELOCK).
-      accountsPartial({
-        sender: user.publicKey,
-        payer: wallet.publicKey,
-        htlc: pda.htlc,
-      }).instruction();
-    const tx = new anchor.web3.Transaction().add(signAddLock);
-    tx.feePayer = wallet.publicKey;
-    tx.recentBlockhash = (
-      await anchor.getProvider().connection.getLatestBlockhash()
-    ).blockhash;
-    await tx.partialSign(user.payer);
-    const serialized_tx = tx.serialize({
-      requireAllSignatures: false,
-    });
-    console.log("serialized partial transaction", serialized_tx);
-    //  bs58.encode(tx.serializeMessage());
-
-    // const rawTx = bs58.decode(serialized_tx);
-    // const newtx = anchor.web3.Transaction.from(rawTx);
-    await tx.sign(wallet.payer);
-    // const fullSignedTx = await wallet.signTransaction(tx);
-
-    await anchor.web3.sendAndConfirmTransaction(anchor.getProvider().connection, tx, [user.payer, wallet.payer]);
-    // const txSignature = await anchor.getProvider().connection.sendRawTransaction(
-    //   Buffer.from(tx.serialize())
-    // );
-    console.log("lamport balance of wallet after addLock",
-      await anchor.getProvider().connection.getBalance(wallet.publicKey));
-    console.log("lamport balance of Alice-wallet after addLock",
-      await anchor.getProvider().connection.getBalance(user.publicKey));
-    const tx4 = await program.methods.redeem(IDArray, SECRETArray).
-      accountsPartial({
-        userSigning: user.publicKey,
-        htlc: pda.htlc,
-        srcReceiver: wallet.publicKey,
-      })
-      .signers([user.payer])
-      .rpc();
-    console.log("lamport balance of Alice-wallet after  redeem",
-      await anchor.getProvider().connection.getBalance(user.publicKey));
-
-    // await wait(15000);
-    // const refundTx = await program.methods.refund(IDArray).
-    //   accountsPartial({
-    //     userSigning: wallet.publicKey,
-    //     htlc: pda.htlc,
-    //     sender: wallet.publicKey,
-    //   })
-    //   .signers([wallet.payer])
-    //   .rpc();
-  });
-
-
-
-
-
-
-
-  // it("Bob can redeem with the correct secret", async () => {
-
-  //   const TIME = new Date().getTime() + 15000;
+  //   const TIME = new Date().getTime() + 20000;
   //   const TIMELOCK = new anchor.BN(TIME / 1000);
-  //   console.log("lamport balance of htlc at the beginning",
-  //     await anchor.getProvider().connection.getBalance(pda.htlc));
-  //   console.log("lamport balance of wallet at the beginning",
+  //   console.log("lamport balance of wallet before commit",
   //     await anchor.getProvider().connection.getBalance(wallet.publicKey));
-  //   const tx1 = await program.methods
-  //     .lock(IDArray, HASHLOCKArray, TIMELOCK, new anchor.BN(AMOUNT), DSTCHAIN, DSTADDRESS, DSTASSET, SRCASSET, bob.publicKey, pda.htlcBump)
+  //   const commitTx = await program.methods
+  //     .commit(IDArray, HOPCHAINS, HOPASSETS, HOPADDRESSES, DSTCHAIN, DSTASSET, DSTADDRESS, SRCASSET, wallet.publicKey, TIMELOCK, new anchor.BN(AMOUNT), pda.htlcBump)
   //     .accountsPartial({
-  //       sender: wallet.publicKey,
+  //       sender: user.publicKey,
   //       htlc: pda.htlc,
   //     })
-  //     .signers([wallet.payer])
-  //     .rpc();//.catch(e => console.error(e));
+  //     .signers([user.payer])
+  //     .rpc();
 
-  //   const details = await program.methods.getDetails(IDArray).accountsPartial({ htlc: pda.htlc }).view();
-  //   console.log(`${details} details`);
+  //   console.log("lamport balance of wallet before addLock",
+  //     await anchor.getProvider().connection.getBalance(wallet.publicKey));
+  //   console.log("lamport balance of Alice-wallet before addLock",
+  //     await anchor.getProvider().connection.getBalance(user.publicKey));
 
-  //   console.log("lamport balance of hltc after lock",
-  //     await anchor.getProvider().connection.getBalance(pda.htlc));
-  //   console.log("lamport balance of bob after lock",
-  //     await anchor.getProvider().connection.getBalance(bob.publicKey));
-  //   const redeemTx = await program.methods.redeem(IDArray, SECRETArray).
+  //   const signAddLock = await program.methods.addLock(IDArray, HASHLOCKArray, TIMELOCK).
+  //     accountsPartial({
+  //       sender: user.publicKey,
+  //       payer: wallet.publicKey,
+  //       htlc: pda.htlc,
+  //     }).instruction();
+  //   const tx = new anchor.web3.Transaction().add(signAddLock);
+  //   tx.feePayer = wallet.publicKey;
+  //   tx.recentBlockhash = (
+  //     await anchor.getProvider().connection.getLatestBlockhash()
+  //   ).blockhash;
+  //   await tx.partialSign(user.payer);
+  //   const serialized_tx = tx.serialize({
+  //     requireAllSignatures: false,
+  //   });
+  //   console.log("serialized partial transaction", serialized_tx);
+  //   //  bs58.encode(tx.serializeMessage());
+
+  //   // const rawTx = bs58.decode(serialized_tx);
+  //   // const newtx = anchor.web3.Transaction.from(rawTx);
+  //   await tx.sign(wallet.payer);
+  //   // const fullSignedTx = await wallet.signTransaction(tx);
+
+  //   await anchor.web3.sendAndConfirmTransaction(anchor.getProvider().connection, tx, [user.payer, wallet.payer]);
+  //   // const txSignature = await anchor.getProvider().connection.sendRawTransaction(
+  //   //   Buffer.from(tx.serialize())
+  //   // );
+  //   console.log("lamport balance of wallet after addLock",
+  //     await anchor.getProvider().connection.getBalance(wallet.publicKey));
+  //   console.log("lamport balance of Alice-wallet after addLock",
+  //     await anchor.getProvider().connection.getBalance(user.publicKey));
+  //   // const tx4 = await program.methods.redeem(IDArray, SECRETArray).
+  //   //   accountsPartial({
+  //   //     userSigning: user.publicKey,
+  //   //     htlc: pda.htlc,
+  //   //     srcReceiver: wallet.publicKey,
+  //   //   })
+  //   //   .signers([user.payer])
+  //   //   .rpc();
+  //   // console.log("lamport balance of Alice-wallet after  redeem",
+  //   //   await anchor.getProvider().connection.getBalance(user.publicKey));
+
+  //   await wait(25000);
+  //   const refundTx = await program.methods.refund(IDArray).
   //     accountsPartial({
   //       userSigning: wallet.publicKey,
   //       htlc: pda.htlc,
-  //       srcReceiver: bob.publicKey
+  //       sender: wallet.publicKey,
   //     })
   //     .signers([wallet.payer])
   //     .rpc();
-  //   console.log("lamport balance of wallet after redeem",
-  //     await anchor.getProvider().connection.getBalance(wallet.publicKey));
-  //   console.log("lamport balance of hltc after redeem",
-  //     await anchor.getProvider().connection.getBalance(pda.htlc));
-  //   console.log("lamport balance of bob after redeem",
-  //     await anchor.getProvider().connection.getBalance(bob.publicKey));
   // });
+
+
+
+
+
+
+
+  it("Bob can redeem with the correct secret", async () => {
+
+    const TIME = new Date().getTime() + 20000;
+    const TIMELOCK = new anchor.BN(TIME / 1000);
+    const RTIME = new Date().getTime() + 18000;
+    const RTIMELOCK = new anchor.BN(RTIME / 1000);
+    console.log(`[${RTIMELOCK * 1000}] reward Timelock`);
+    console.log("lamport balance of htlc at the beginning",
+      await anchor.getProvider().connection.getBalance(pda.htlc));
+    console.log("lamport balance of wallet at the beginning",
+      await anchor.getProvider().connection.getBalance(wallet.publicKey));
+    const lockTx = await program.methods
+      .lock(IDArray, HASHLOCKArray, TIMELOCK, new anchor.BN(AMOUNT), DSTCHAIN, DSTADDRESS, DSTASSET, SRCASSET, bob.publicKey, pda.htlcBump)
+      .accountsPartial({
+        sender: wallet.publicKey,
+        htlc: pda.htlc,
+      }).transaction();
+    // .signers([wallet.payer])
+    // .rpc();//.catch(e => console.error(e));
+
+
+    const rewardTx = await program.methods
+      .lockReward(IDArray, RTIMELOCK, new anchor.BN(REWARD), pda.htlcBump)
+      .accountsPartial({
+        sender: wallet.publicKey,
+        htlc: pda.htlc,
+      }).transaction();
+
+    let lock_with_rewardtx = new anchor.web3.Transaction();
+    lock_with_rewardtx.add(lockTx);
+    lock_with_rewardtx.add(rewardTx);
+
+    await anchor.web3.sendAndConfirmTransaction(anchor.getProvider().connection, lock_with_rewardtx, [wallet.payer]);
+
+    const details = await program.methods.getDetails(IDArray).accountsPartial({ htlc: pda.htlc }).view();
+    console.log(`${details} details`);
+
+    console.log("lamport balance of hltc after lock",
+      await anchor.getProvider().connection.getBalance(pda.htlc));
+    console.log("lamport balance of bob after lock",
+      await anchor.getProvider().connection.getBalance(bob.publicKey));
+    const redeemTx = await program.methods.redeem(IDArray, SECRETArray).
+      accountsPartial({
+        userSigning: wallet.publicKey,
+        sender: wallet.publicKey,
+        srcReceiver: bob.publicKey,
+        htlc: pda.htlc,
+      })
+      .signers([wallet.payer])
+      .rpc();
+    console.log("lamport balance of wallet after redeem",
+      await anchor.getProvider().connection.getBalance(wallet.publicKey));
+    console.log("lamport balance of hltc after redeem",
+      await anchor.getProvider().connection.getBalance(pda.htlc));
+    console.log("lamport balance of bob after redeem",
+      await anchor.getProvider().connection.getBalance(bob.publicKey));
+  });
 
 
 
@@ -212,9 +232,12 @@ describe("HTLC", () => {
 
   // it("can refund after the timelock expired", async () => {
 
-  //   const TIME = new Date().getTime() + 15000;
+  //   const TIME = new Date().getTime() + 20000;
   //   const TIMELOCK = new anchor.BN(TIME / 1000);
   //   console.log(`[${TIMELOCK * 1000}] the Timelock`);
+  //   const RTIME = new Date().getTime() + 18000;
+  //   const RTIMELOCK = new anchor.BN(RTIME / 1000);
+  //   console.log(`[${RTIMELOCK * 1000}] reward Timelock`);
   //   console.log("lamport balance of htlc at the beginning",
   //     await anchor.getProvider().connection.getBalance(pda.htlc));
   //   console.log("lamport balance of wallet at the begining",
@@ -225,9 +248,23 @@ describe("HTLC", () => {
   //     .accountsPartial({
   //       sender: wallet.publicKey,
   //       htlc: pda.htlc,
-  //     })
-  //     .signers([wallet.payer])
-  //     .rpc();//.catch(e => console.error(e));
+  //     }).transaction();
+  //   // .signers([wallet.payer])
+  //   // .rpc();//.catch(e => console.error(e));
+
+
+  //   const rewardTx = await program.methods
+  //     .lockReward(IDArray, RTIMELOCK, new anchor.BN(REWARD), pda.htlcBump)
+  //     .accountsPartial({
+  //       sender: wallet.publicKey,
+  //       htlc: pda.htlc,
+  //     }).transaction();
+
+  //   let lock_with_rewardtx = new anchor.web3.Transaction();
+  //   lock_with_rewardtx.add(lockTx);
+  //   lock_with_rewardtx.add(rewardTx);
+
+  //   await anchor.web3.sendAndConfirmTransaction(anchor.getProvider().connection, lock_with_rewardtx, [wallet.payer]);
 
   //   console.log("lamport balance of hltc after lock",
   //     await anchor.getProvider().connection.getBalance(pda.htlc));
@@ -235,9 +272,8 @@ describe("HTLC", () => {
   //     await anchor.getProvider().connection.getBalance(wallet.publicKey));
 
   //   // Withdraw the funds back
-  //   await wait(20000);
-  //   const CURTIME = new Date().getTime() / 1000;
-  //   console.log(`[${CURTIME * 1000}] CURRENT TIME`);
+  //   await wait(25000);
+  //   console.log(`[${new Date().getTime()}] CURRENT TIME`);
   //   const refundTx = await program.methods.refund(IDArray).
   //     accountsPartial({
   //       userSigning: wallet.publicKey,

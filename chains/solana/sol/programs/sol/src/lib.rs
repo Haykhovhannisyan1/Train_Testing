@@ -1,8 +1,15 @@
+//   _____ ____      _    ___ _   _      ____  ____   ___ _____ ___   ____ ___  _
+//  |_   _|  _ \    / \  |_ _| \ | |    |  _ \|  _ \ / _ \_   _/ _ \ / ___/ _ \| |
+//    | | | |_) |  / _ \  | ||  \| |    | |_) | |_) | | | || || | | | |  | | | | |
+//    | | |  _ <  / ___ \ | || |\  |    |  __/|  _ <| |_| || || |_| | |__| |_| | |___
+//    |_| |_| \_\/_/   \_\___|_| \_|    |_|   |_| \_\\___/ |_| \___/ \____\___/|_____|
+
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use sha2::{Digest, Sha256};
 use std::mem::size_of;
-declare_id!("2XfmTmnhz8kDnryZSJKKV53tLN7DKZbrN9Q1sZbJo5bc");
+
+declare_id!("Erxy5jJoEbqrWVVyynH47pwzcthv4mpN2qELBofx9gcz");
 /// @title Pre Hashed Timelock Contracts (PHTLCs) on Solana.
 ///
 /// This contract provides a way to create and keep PHTLCs for Solana.
@@ -25,27 +32,6 @@ declare_id!("2XfmTmnhz8kDnryZSJKKV53tLN7DKZbrN9Q1sZbJo5bc");
 #[program]
 pub mod native_htlc {
     use super::*;
-
-    /// @dev Called by the Sender to get the commitId from the given parameters.
-    pub fn get_commit_id(
-        ctx: Context<GetCommitId>,
-        amount: u64,
-        timelock: u64,
-    ) -> Result<[u8; 32]> {
-        let sender = &ctx.accounts.sender.to_account_info().key;
-        let receiver = &ctx.accounts.receiver.to_account_info().key;
-
-        let mut hasher = Sha256::new();
-        hasher.update(ctx.program_id);
-        hasher.update(sender);
-        hasher.update(receiver);
-        hasher.update(&amount.to_be_bytes());
-        hasher.update(&timelock.to_be_bytes());
-
-        let commitId = hasher.finalize();
-
-        Ok(commitId.into())
-    }
 
     /// @dev Sender / Payer sets up a new pre-hash time lock contract depositing the
     /// funds and providing the src_receiver and terms.
@@ -85,8 +71,9 @@ pub mod native_htlc {
         htlc.hashlock = [0u8; 32];
         htlc.amount = amount;
         htlc.timelock = timelock;
-        htlc.redeemed = false;
-        htlc.refunded = false;
+        htlc.reward = 0;
+        htlc.reward_timelock = 0;
+        htlc.claimed = 1;
         htlc.secret = [0u8; 32];
 
         let bump_vector = commit_bump.to_le_bytes();
@@ -148,8 +135,9 @@ pub mod native_htlc {
         htlc.secret = [0u8; 32];
         htlc.amount = amount;
         htlc.timelock = timelock;
-        htlc.redeemed = false;
-        htlc.refunded = false;
+        htlc.reward = 0;
+        htlc.reward_timelock = 0;
+        htlc.claimed = 1;
 
         let bump_vector = lock_bump.to_le_bytes();
         let inner = vec![Id.as_ref(), bump_vector.as_ref()];
@@ -165,6 +153,40 @@ pub mod native_htlc {
         system_program::transfer(transfer_context, amount)?;
 
         Ok(Id)
+    }
+    pub fn lock_reward(
+        ctx: Context<LockReward>,
+        Id: [u8; 32],
+        reward_timelock: u64,
+        reward: u64,
+        lock_bump: u8,
+    ) -> Result<bool> {
+        let clock = Clock::get().unwrap();
+        let htlc = &mut ctx.accounts.htlc;
+
+        require!(
+            reward_timelock < htlc.timelock
+                && reward_timelock > clock.unix_timestamp.try_into().unwrap(),
+            HTLCError::InvalidRewardTimeLock
+        );
+
+        htlc.reward_timelock = reward_timelock;
+        htlc.reward = reward;
+
+        let bump_vector = lock_bump.to_le_bytes();
+        let inner = vec![Id.as_ref(), bump_vector.as_ref()];
+        let outer = vec![inner.as_slice()];
+        let transfer_context = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.sender.to_account_info(),
+                to: htlc.to_account_info(),
+            },
+            outer.as_slice(),
+        );
+        system_program::transfer(transfer_context, reward)?;
+
+        Ok(true)
     }
 
     /// @dev Called by the sender to add hashlock to the HTLC
@@ -203,13 +225,35 @@ pub mod native_htlc {
         require!([0u8; 32] != htlc.hashlock, HTLCError::HashlockNotSet);
         require!(hash == htlc.hashlock.into(), HTLCError::HashlockNoMatch);
 
-        htlc.redeemed = true;
+        htlc.claimed = 3;
         htlc.secret = secret;
 
         let amount = htlc.amount;
+        let reward = htlc.reward;
 
-        htlc.sub_lamports(amount)?;
-        ctx.accounts.src_receiver.add_lamports(amount)?;
+        if htlc.reward != 0 {
+            // if redeem is called before the reward_timelock sender should get the reward back
+            if htlc.reward_timelock > Clock::get().unwrap().unix_timestamp.try_into().unwrap() {
+                htlc.sub_lamports(amount + reward)?;
+                ctx.accounts.src_receiver.add_lamports(amount)?;
+                ctx.accounts.sender.add_lamports(reward)?;
+            } else {
+                // if the caller is the receiver then they should get and the amount,
+                // and the reward
+                if ctx.accounts.user_signing.key() == ctx.accounts.src_receiver.key() {
+                    htlc.sub_lamports(amount + reward)?;
+                    ctx.accounts.src_receiver.add_lamports(amount + reward)?;
+                } else {
+                    htlc.sub_lamports(amount + reward)?;
+                    ctx.accounts.src_receiver.add_lamports(amount)?;
+                    ctx.accounts.user_signing.add_lamports(reward)?;
+                }
+            }
+        } else {
+            // send the tokens to the receiver if the reward is set to zero
+            htlc.sub_lamports(amount)?;
+            ctx.accounts.src_receiver.add_lamports(amount)?;
+        }
 
         Ok(true)
     }
@@ -221,12 +265,13 @@ pub mod native_htlc {
     pub fn refund(ctx: Context<Refund>, Id: [u8; 32]) -> Result<bool> {
         let htlc = &mut ctx.accounts.htlc;
 
-        htlc.refunded = true;
+        htlc.claimed = 2;
 
         let amount = htlc.amount;
+        let reward = htlc.reward;
 
-        htlc.sub_lamports(amount)?;
-        ctx.accounts.sender.add_lamports(amount)?;
+        htlc.sub_lamports(amount + reward)?;
+        ctx.accounts.sender.add_lamports(amount + reward)?;
 
         Ok(true)
     }
@@ -246,19 +291,13 @@ pub mod native_htlc {
             hashlock: htlc.hashlock,
             secret: htlc.secret.clone(),
             amount: htlc.amount,
+            reward: htlc.reward,
             timelock: htlc.timelock,
-            redeemed: htlc.redeemed,
-            refunded: htlc.refunded,
+            reward_timelock: htlc.reward_timelock,
+            claimed: htlc.claimed,
         })
     }
 }
-
-#[account]
-#[derive(Default)]
-pub struct IdStruct {
-    pub id: [u8; 32],
-}
-
 #[account]
 #[derive(Default)]
 pub struct HTLC {
@@ -271,18 +310,11 @@ pub struct HTLC {
     pub hashlock: [u8; 32],
     pub secret: [u8; 32],
     pub amount: u64,
+    pub reward: u64,
     pub timelock: u64,
-    pub redeemed: bool,
-    pub refunded: bool,
+    pub reward_timelock: u64,
+    pub claimed: u8,
 }
-#[derive(Accounts)]
-pub struct GetCommitId<'info> {
-    ///CHECK: The sender
-    pub sender: UncheckedAccount<'info>,
-    ///CHECK: The reciever
-    pub receiver: UncheckedAccount<'info>,
-}
-
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32], commit_bump: u8)]
 pub struct Commit<'info> {
@@ -327,9 +359,35 @@ pub struct Lock<'info> {
 
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32])]
+pub struct LockReward<'info> {
+    #[account(mut)]
+    sender: Signer<'info>,
+    #[account(
+    mut,
+    seeds = [
+        Id.as_ref()
+    ],
+    bump,
+    constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
+    has_one = sender @ HTLCError::UnauthorizedAccess,
+    )]
+    pub htlc: Box<Account<'info, HTLC>>,
+
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(Id: [u8; 32])]
 pub struct Redeem<'info> {
     #[account(mut)]
     user_signing: Signer<'info>,
+    ///CHECK: The reciever
+    #[account(mut)]
+    sender: UncheckedAccount<'info>,
+    ///CHECK: The reciever
+    #[account(mut)]
+    pub src_receiver: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -337,15 +395,11 @@ pub struct Redeem<'info> {
             Id.as_ref()
         ],
         bump,
+        has_one = sender @HTLCError::NotSender,
         has_one = src_receiver @HTLCError::NotReciever,
-        constraint = !htlc.redeemed @ HTLCError::AlreadyRedeemed,
-        constraint = !htlc.refunded @ HTLCError::AlreadyRefunded,
+        constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
     )]
     pub htlc: Box<Account<'info, HTLC>>,
-
-    ///CHECK: The reciever
-    #[account(mut)]
-    pub src_receiver: UncheckedAccount<'info>,
 
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
@@ -363,8 +417,7 @@ pub struct Refund<'info> {
     ],
     bump,
     has_one = sender @HTLCError::NotSender,
-    constraint = !htlc.refunded @ HTLCError::AlreadyRefunded,
-    constraint = !htlc.redeemed @ HTLCError::AlreadyRedeemed,
+    constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
     constraint = Clock::get().unwrap().unix_timestamp >= htlc.timelock.try_into().unwrap() @ HTLCError::NotPastTimeLock,
     )]
     pub htlc: Box<Account<'info, HTLC>>,
@@ -388,8 +441,7 @@ pub struct AddLock<'info> {
         Id.as_ref()
     ],
     bump,
-    constraint = !htlc.redeemed @ HTLCError::AlreadyRedeemed,
-    constraint = !htlc.refunded @ HTLCError::AlreadyRefunded,
+    constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
     constraint = htlc.sender == sender.key() @ HTLCError::UnauthorizedAccess,
     constraint = htlc.hashlock == [0u8;32] @ HTLCError::HashlockAlreadySet,
     )]
@@ -417,16 +469,16 @@ pub enum HTLCError {
     NotFutureTimeLock,
     #[msg("Not Past TimeLock.")]
     NotPastTimeLock,
+    #[msg("Invalid Reward TimeLock.")]
+    InvalidRewardTimeLock,
     #[msg("Hashlock Is Not Set.")]
     HashlockNotSet,
     #[msg("Does Not Match the Hashlock.")]
     HashlockNoMatch,
     #[msg("Hashlock Already Set.")]
     HashlockAlreadySet,
-    #[msg("Funds Are Alredy Redeemed.")]
-    AlreadyRedeemed,
-    #[msg("Funds Are Alredy Refunded.")]
-    AlreadyRefunded,
+    #[msg("Funds Are Alredy Claimed.")]
+    AlreadyClaimed,
     #[msg("Funds Can Not Be Zero.")]
     FundsNotSent,
     #[msg("Unauthorized Access.")]
