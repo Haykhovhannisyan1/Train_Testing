@@ -46,7 +46,7 @@ async function commit(): Promise<void> {
     const srcReceiver = { bits: '0x6364b23e8c34d46d0b68d20e0c1463230a9243a1dd710a7dd8b32dfb927af53a' };
     const currentUnixTime = Math.floor(Date.now() / 1000) + 901;
     const timelock = DateTime.fromUnixSeconds(currentUnixTime).toTai64();
-    const id = 3n;
+    const id = 59943134349793186014852117031609194998356693162420944899250311160443274393177n;
 
     const contractAddress = Address.fromB256(contractAddressString);
     const contractInstance = new Contract(contractAddress, contractAbi, wallet);

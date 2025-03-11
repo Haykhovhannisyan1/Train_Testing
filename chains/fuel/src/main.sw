@@ -35,11 +35,108 @@ use std::{
     bytes::Bytes,
     call_frames::*,
     hash::*,
+    contract_id::*,
+    string::String,
     storage::storage_vec::*,
     b512::B512,
     ecr::ec_recover_address,
     bytes_conversions::{u64::*, u256::*, b256::*},
 };
+
+use standards::src16::{
+    DataEncoder,
+    DomainHash,
+    SRC16,
+    SRC16Base,
+    SRC16Domain,
+    SRC16Encode,
+    SRC16Payload,
+    TypedDataHash,
+};
+
+use sway_libs::reentrancy::reentrancy_guard;
+
+configurable {
+    DOMAIN: str[14] = __to_str_array("TRAIN Protocol"),
+    VERSION: str[1] = __to_str_array("1"),
+    CHAIN_ID: u64 = 9889u64,
+}
+ 
+pub struct AddLockSig {
+    pub Id: u256,
+    pub hashlock: b256,
+    pub timelock: u64,
+}
+
+// keccak256(toUtf8Bytes("AddLockSig(u256 Id,b256 hashlock,u64 timelock)"))
+const ADD_LOCK_SIG_TYPE_HASH: b256 = 0xb1c5ac478d5e87e995972254aa667d7ffc7100f006e1bc13eb2160760e950a79;
+
+impl TypedDataHash for AddLockSig {
+    fn type_hash() -> b256 {
+        ADD_LOCK_SIG_TYPE_HASH
+        }
+
+    fn struct_hash(self) -> b256 {
+            let mut encoded = Bytes::new();
+            encoded.append(
+                ADD_LOCK_SIG_TYPE_HASH.to_be_bytes()
+            );
+            encoded.append(
+                DataEncoder::encode_u256(self.Id).to_be_bytes()
+            );
+            encoded.append(
+                DataEncoder::encode_b256(self.hashlock).to_be_bytes()
+            );
+            encoded.append(
+                DataEncoder::encode_u64(self.timelock).to_be_bytes()
+            );
+    
+            keccak256(encoded)
+        }
+}
+
+impl SRC16Encode<AddLockSig> for AddLockSig {
+    fn encode(s: AddLockSig) -> b256 {
+        // encodeData hash
+        let data_hash = s.struct_hash();
+        // setup payload
+        let payload = SRC16Payload {
+            domain: _get_domain_separator(),
+            data_hash: data_hash,
+        };
+
+        // Get the final encoded hash
+        match payload.encode_hash() {
+            Some(hash) => hash,
+            None => revert(0),
+        }
+    }
+}
+
+impl SRC16Base for Contract {
+    fn domain_separator_hash() -> b256 {
+        _get_domain_separator().domain_hash()
+    }
+
+    fn data_type_hash() -> b256 {
+        ADD_LOCK_SIG_TYPE_HASH
+    }
+}
+
+impl SRC16 for Contract {
+    fn domain_separator() -> SRC16Domain {
+        _get_domain_separator()
+    }
+}
+
+fn _get_domain_separator() -> SRC16Domain {
+    SRC16Domain::new(
+        String::from_ascii_str(from_str_array(DOMAIN)),
+        String::from_ascii_str(from_str_array(VERSION)),
+        CHAIN_ID,
+        ContractId::this(),
+    )
+}
 
 // Interface defining HTLC functions
 abi Train {
@@ -207,6 +304,7 @@ impl Train for Contract {
         srcReceiver: Address,
         timelock: u64
     ) -> u256 {
+        reentrancy_guard();
         require(msg_amount() > 0, "Funds Not Sent");
         require(timelock > timestamp() + 900, "Not Future Timelock");
         require(!has_htlc(Id), "Contract Already Exists");
@@ -248,6 +346,7 @@ impl Train for Contract {
   /// Can only be called if the HTLC exists and the timelock has passed. Emits a `TokenRefunded` event.
     #[storage(read, write)]
     fn refund(Id: u256) -> bool {
+        reentrancy_guard();
         require(has_htlc(Id), "Contract Does Not Exist");
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
 
@@ -273,6 +372,7 @@ impl Train for Contract {
 /// Can only be called by the HTLC's creator if the HTLC exists and has not been claimed. Emits a `TokenLockAdded` event.
     #[storage(read, write)]
     fn add_lock(Id: u256, hashlock: b256, timelock: u64) -> u256 {
+        reentrancy_guard();
         require(has_htlc(Id), "Contract Does Not Exist");
         require(timelock > timestamp() + 900, "Not Future Timelock");
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
@@ -293,15 +393,20 @@ impl Train for Contract {
   /// Verifies the provided signature and updates the HTLC if valid. Emits a `TokenLockAdded` event.
     #[storage(read, write)]
     fn add_lock_sig(signature: B512, Id: u256, hashlock: b256, timelock: u64) -> u256 {
+        reentrancy_guard();
         require(has_htlc(Id), "Contract Does Not Exist");
         require(timelock > timestamp() + 900, "Not Future Timelock");
 
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
 
-        // Ensure the caller is authorized via ECDSA signature verification
-        let message: [b256; 3] = [Id.into(), hashlock, timelock.as_u256().into()];
-        let message_hash = sha256(message);
-        require(htlc.sender == ec_recover_address(signature, message_hash).unwrap(), "Invalid Signature");
+        // Ensure the caller is authorized via signature verification
+        let add_lock_sig_msg = AddLockSig {
+            Id,
+            hashlock,
+            timelock,
+        };
+        let msg_hash: b256 = AddLockSig::encode(add_lock_sig_msg);
+        require(htlc.sender == ec_recover_address(signature, msg_hash).unwrap(), "Invalid Signature");
 
         require(htlc.claimed == 1, "Already Claimed");
         require(htlc.hashlock == b256::from(1), "Hashlock Already Set");
@@ -331,6 +436,7 @@ impl Train for Contract {
         dstAddress: str[64],
         dstAsset: str[64]
     ) -> u256 {
+        reentrancy_guard();
         require(!has_htlc(Id), "Contract Already Exists");
         require(msg_amount() > reward, "Funds Not Sent");
         require(timelock > timestamp() + 1800, "Not Future Timelock");
@@ -382,6 +488,7 @@ impl Train for Contract {
 /// Verifies the provided secret against the hashlock and transfers the funds to the recipient. Emits a `TokenRedeemed` event.
     #[storage(read, write)]
     fn redeem(Id: u256, secret: u256) -> bool {
+        reentrancy_guard();
         require(has_htlc(Id), "Contract Does Not Exist");
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
 

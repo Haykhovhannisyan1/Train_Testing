@@ -37,53 +37,66 @@
       "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
     },
     {
+      "type": "str[14]",
+      "concreteTypeId": "32203d670dfc03a706f031ea50a67c7ad9d526d29c09f448f2fa0e50b8b0c2f9"
+    },
+    {
+      "type": "str[1]",
+      "concreteTypeId": "6354581bfa62ac188c9f243cc30e1bf38a150773f871be8765351ef8c5db6c1e"
+    },
+    {
       "type": "str[64]",
       "concreteTypeId": "10c26c516fd3869e378b13a13a1710b73d62f274159428ad854429857e01c5b3"
     },
     {
       "type": "struct HTLC",
       "concreteTypeId": "86d8c6f7cae21a575a05f79ba638fb0dad5282a73d2f4ff843b273d20db407a9",
-      "metadataTypeId": 6
+      "metadataTypeId": 7
     },
     {
       "type": "struct Reward",
       "concreteTypeId": "a9d8854d124ad51a13800926dffc832d2b05843a39a669d4d9e5defeecdbba46",
-      "metadataTypeId": 7
+      "metadataTypeId": 8
     },
     {
       "type": "struct TokenCommitted",
       "concreteTypeId": "78acd35e37502d98e65a2ab559087dd216a287a7451d4f935b390221d298b700",
-      "metadataTypeId": 8
+      "metadataTypeId": 9
     },
     {
       "type": "struct TokenLockAdded",
       "concreteTypeId": "ae438802fd396d1a9e35c5d90ac591a3b07fefce2c695bbe8b413c97a45580a0",
-      "metadataTypeId": 9
+      "metadataTypeId": 10
     },
     {
       "type": "struct TokenLocked",
       "concreteTypeId": "40a5216fe49383a63f3bc1fc9ed173b15d65507cf0afb1bf60b45455cf3c8cc2",
-      "metadataTypeId": 10
+      "metadataTypeId": 11
     },
     {
       "type": "struct TokenRedeemed",
       "concreteTypeId": "763c4ffa6ea9a443fa0bd80203751132ca64f37f23d2a7637091737e9cd5b7d7",
-      "metadataTypeId": 11
+      "metadataTypeId": 12
     },
     {
       "type": "struct TokenRefuned",
       "concreteTypeId": "3305d3421a33ef2ee99d7b6a3d1e24e0f49eaee9476c84a9066d33eb7dc306d7",
-      "metadataTypeId": 12
+      "metadataTypeId": 13
+    },
+    {
+      "type": "struct standards::src16::SRC16Domain",
+      "concreteTypeId": "b5e7f2de3186488c777d721e03dbbb54c67105384beee7930f003310afa9e88b",
+      "metadataTypeId": 14
     },
     {
       "type": "struct std::address::Address",
       "concreteTypeId": "f597b637c3b0f588fb8d7086c6f4735caa3122b85f0423b82e489f9bb58e2308",
-      "metadataTypeId": 13
+      "metadataTypeId": 15
     },
     {
       "type": "struct std::b512::B512",
       "concreteTypeId": "745e252e80bec590efc3999ae943f07ccea4d5b45b00bb6575499b64abdd3322",
-      "metadataTypeId": 15
+      "metadataTypeId": 17
     },
     {
       "type": "u256",
@@ -125,11 +138,11 @@
       "components": [
         {
           "name": "Address",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "ContractId",
-          "typeId": 16
+          "typeId": 20
         }
       ]
     },
@@ -155,8 +168,12 @@
       "metadataTypeId": 5
     },
     {
+      "type": "raw untyped ptr",
+      "metadataTypeId": 6
+    },
+    {
       "type": "struct HTLC",
-      "metadataTypeId": 6,
+      "metadataTypeId": 7,
       "components": [
         {
           "name": "amount",
@@ -172,11 +189,11 @@
         },
         {
           "name": "sender",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "srcReceiver",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "timelock",
@@ -184,17 +201,17 @@
         },
         {
           "name": "assetId",
-          "typeId": 14
+          "typeId": 16
         },
         {
           "name": "claimed",
-          "typeId": 17
+          "typeId": 22
         }
       ]
     },
     {
       "type": "struct Reward",
-      "metadataTypeId": 7,
+      "metadataTypeId": 8,
       "components": [
         {
           "name": "amount",
@@ -208,7 +225,7 @@
     },
     {
       "type": "struct TokenCommitted",
-      "metadataTypeId": 8,
+      "metadataTypeId": 9,
       "components": [
         {
           "name": "hopChains",
@@ -240,11 +257,11 @@
         },
         {
           "name": "sender",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "srcReceiver",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "srcAsset",
@@ -260,13 +277,13 @@
         },
         {
           "name": "assetId",
-          "typeId": 14
+          "typeId": 16
         }
       ]
     },
     {
       "type": "struct TokenLockAdded",
-      "metadataTypeId": 9,
+      "metadataTypeId": 10,
       "components": [
         {
           "name": "Id",
@@ -284,7 +301,7 @@
     },
     {
       "type": "struct TokenLocked",
-      "metadataTypeId": 10,
+      "metadataTypeId": 11,
       "components": [
         {
           "name": "Id",
@@ -308,11 +325,11 @@
         },
         {
           "name": "sender",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "srcReceiver",
-          "typeId": 13
+          "typeId": 15
         },
         {
           "name": "srcAsset",
@@ -336,13 +353,13 @@
         },
         {
           "name": "assetId",
-          "typeId": 14
+          "typeId": 16
         }
       ]
     },
     {
       "type": "struct TokenRedeemed",
-      "metadataTypeId": 11,
+      "metadataTypeId": 12,
       "components": [
         {
           "name": "Id",
@@ -364,7 +381,7 @@
     },
     {
       "type": "struct TokenRefuned",
-      "metadataTypeId": 12,
+      "metadataTypeId": 13,
       "components": [
         {
           "name": "Id",
@@ -373,8 +390,30 @@
       ]
     },
     {
+      "type": "struct standards::src16::SRC16Domain",
+      "metadataTypeId": 14,
+      "components": [
+        {
+          "name": "name",
+          "typeId": 21
+        },
+        {
+          "name": "version",
+          "typeId": 21
+        },
+        {
+          "name": "chain_id",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "verifying_contract",
+          "typeId": 20
+        }
+      ]
+    },
+    {
       "type": "struct std::address::Address",
-      "metadataTypeId": 13,
+      "metadataTypeId": 15,
       "components": [
         {
           "name": "bits",
@@ -384,26 +423,6 @@
     },
     {
       "type": "struct std::asset_id::AssetId",
-      "metadataTypeId": 14,
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ]
-    },
-    {
-      "type": "struct std::b512::B512",
-      "metadataTypeId": 15,
-      "components": [
-        {
-          "name": "bits",
-          "typeId": 1
-        }
-      ]
-    },
-    {
-      "type": "struct std::contract_id::ContractId",
       "metadataTypeId": 16,
       "components": [
         {
@@ -413,11 +432,87 @@
       ]
     },
     {
+      "type": "struct std::b512::B512",
+      "metadataTypeId": 17,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": 1
+        }
+      ]
+    },
+    {
+      "type": "struct std::bytes::Bytes",
+      "metadataTypeId": 18,
+      "components": [
+        {
+          "name": "buf",
+          "typeId": 19
+        },
+        {
+          "name": "len",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::bytes::RawBytes",
+      "metadataTypeId": 19,
+      "components": [
+        {
+          "name": "ptr",
+          "typeId": 6
+        },
+        {
+          "name": "cap",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 20,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::string::String",
+      "metadataTypeId": 21,
+      "components": [
+        {
+          "name": "bytes",
+          "typeId": 18
+        }
+      ]
+    },
+    {
       "type": "u8",
-      "metadataTypeId": 17
+      "metadataTypeId": 22
     }
   ],
   "functions": [
+    {
+      "inputs": [],
+      "name": "data_type_hash",
+      "output": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "attributes": null
+    },
+    {
+      "inputs": [],
+      "name": "domain_separator_hash",
+      "output": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "attributes": null
+    },
+    {
+      "inputs": [],
+      "name": "domain_separator",
+      "output": "b5e7f2de3186488c777d721e03dbbb54c67105384beee7930f003310afa9e88b",
+      "attributes": null
+    },
     {
       "inputs": [
         {
@@ -796,5 +891,21 @@
     }
   ],
   "messagesTypes": [],
-  "configurables": []
+  "configurables": [
+    {
+      "name": "DOMAIN",
+      "concreteTypeId": "32203d670dfc03a706f031ea50a67c7ad9d526d29c09f448f2fa0e50b8b0c2f9",
+      "offset": 43232
+    },
+    {
+      "name": "VERSION",
+      "concreteTypeId": "6354581bfa62ac188c9f243cc30e1bf38a150773f871be8765351ef8c5db6c1e",
+      "offset": 43248
+    },
+    {
+      "name": "CHAIN_ID",
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "offset": 43224
+    }
+  ]
 }
