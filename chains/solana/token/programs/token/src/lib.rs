@@ -91,6 +91,7 @@ fn transfer_htlc_out<'info>(
     Ok(())
 }
 
+/// @dev A small utility function that allows us to transfer funds and reward out of the htlc.
 fn transfer_htlc_reward_out<'info>(
     sender: AccountInfo<'info>,
     Id: [u8; 32],
@@ -283,6 +284,9 @@ pub mod anchor_htlc {
         Ok(Id)
     }
 
+    /// @dev Solver / Payer sets the reward for claiming the funds.
+    /// @param reward the amount of the reward token.
+    /// @param reward_timelock After this time the rewards can be claimed.
     pub fn lock_reward(
         ctx: Context<LockReward>,
         Id: [u8; 32],
@@ -335,6 +339,7 @@ pub mod anchor_htlc {
 
         let htlc = &mut ctx.accounts.htlc;
 
+        msg!("Id: {:?}", hex::encode(Id));
         msg!("hashlock: {:?}", hex::encode(hashlock));
         msg!("timelock: {:?}", timelock);
 
@@ -492,22 +497,45 @@ pub mod anchor_htlc {
 #[account]
 #[derive(Default)]
 pub struct HTLC {
+    /// @dev The address to recieve funds.
     pub dst_address: String,
+    /// @dev The chain where funds will be received.
     pub dst_chain: String,
+    /// @dev The type of the receiving asset.
     pub dst_asset: String,
+    /// @dev The type of the sending asset.
     pub src_asset: String,
+    /// @dev The creator of the HTLC.
     pub sender: Pubkey,
+    /// @dev The recipient of the funds if conditions are met.
     pub src_receiver: Pubkey,
+    /// @dev The hash of the secret required for redeem.
     pub hashlock: [u8; 32],
+    /// @dev The secret required to redeem.
     pub secret: [u8; 32],
+    /// @dev The amount of funds locked in the HTLC.
     pub amount: u64,
-    pub timelock: u64, //TODO: check if this should be u256
+    /// @dev The timestamp after which the funds can be refunded.
+    pub timelock: u64,
+    /// @dev The amount of the reward in SPL token to be claimed.
     pub reward: u64,
-    pub reward_timelock: u64, //TODO: check if this should be u256
+    /// @dev The timestamp after which the reward can be claimed
+    /// (if claimed before than the reward will be sent back to the Solver).
+    pub reward_timelock: u64,
+    /// @dev The SPL token contract address.
     pub token_contract: Pubkey,
+    /// @dev The htlc_token_account address.
     pub token_wallet: Pubkey,
+    /// @dev Indicates whether the funds were claimed (redeemed(3) or refunded(2)).
     pub claimed: u8,
 }
+/// @dev Commit context.
+/// @param ID The Id of HTLC.
+/// @param sender The sender of the funds.
+/// @param htlc The PreHTLC to be created.
+/// @param htlc_token_account The token account of the PreHTLC(where the funds will be stored).
+/// @param token_contract The type of the token.
+/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], commit_bump: u8)]
 pub struct Commit<'info> {
@@ -549,6 +577,13 @@ pub struct Commit<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
+/// @dev Lock context.
+/// @param ID The Id of HTLC.
+/// @param sender The sender of the funds.
+/// @param htlc The HTLC to be created.
+/// @param htlc_token_account The token account of the HTLC(where the funds will be stored).
+/// @param token_contract The type of the token.
+/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32], lock_bump: u8)]
 pub struct Lock<'info> {
@@ -591,7 +626,13 @@ pub struct Lock<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
-
+/// @dev LockReward context.
+/// @param ID The Id of HTLC.
+/// @param sender The sender of the reward.
+/// @param htlc The HTLC to add the reward.
+/// @param htlc_token_account The token account of the HTLC(where the reward will be stored).
+/// @param token_contract The type of the token.
+/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32])]
 pub struct LockReward<'info> {
@@ -622,7 +663,17 @@ pub struct LockReward<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
-
+/// @dev Redeem context.
+/// @param ID The Id of HTLC.
+/// @param user_signing The user calling the function.
+/// @param sender The sender of the HTLC.
+/// @param src_receiver The receiver of the HTLC.
+/// @param token_contract The type of the token.
+/// @param htlc The HTLC to redeem from.
+/// @param htlc_token_account The token account of the HTLC.
+/// @param sender_token_account The token account of the sender.
+/// @param receiver_token_account The token account of the receiver.
+/// @param reward_token_account The token account to send the reward.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], htlc_bump: u8)]
 pub struct Redeem<'info> {
@@ -683,7 +734,14 @@ pub struct Redeem<'info> {
     associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
 }
-
+/// @dev Refund context.
+/// @param ID The Id of HTLC.
+/// @param user_signing The user calling the function.
+/// @param sender The sender of the HTLC.
+/// @param token_contract The type of the token.
+/// @param htlc The HTLC to refund.
+/// @param htlc_token_account The token account of the HTLC.
+/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], htlc_bump: u8)]
 pub struct Refund<'info> {
@@ -727,7 +785,11 @@ pub struct Refund<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
-
+/// @dev AddLock context.
+/// @param ID The Id of HTLC.
+/// @param sender The sender of the HTLC.
+/// @param payer The Payer of the transaction.
+/// @param htlc The HTLC to add the hashlock.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32])]
 pub struct AddLock<'info> {
@@ -748,7 +810,9 @@ pub struct AddLock<'info> {
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
 }
-
+/// @dev GetDetails context.
+/// @param ID The Id of HTLC.
+/// @param htlc The HTLC.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32])]
 pub struct GetDetails<'info> {
