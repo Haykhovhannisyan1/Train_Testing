@@ -35,8 +35,8 @@ async function addLockSig() {
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, senderWallet);
-  const Id = 59943134349793186014852117031609194998356693162420944899250311160443274393177n;
-  const hashlock = '0xe6edfc9189e2db427d7b7ce83118722729021e125569c3eb76b6700804533ad4';
+  const Id = BigInt(process.env.ID1!);
+  const hashlock = process.env.HASHLOCK!;
   const currentUnixTime =  Math.floor(Date.now() / 1000) + 900;
   const timelock = DateTime.fromUnixSeconds(currentUnixTime).toTai64();
 

@@ -20,8 +20,8 @@ async function redeem() {
 
   const contractAddress = Address.fromB256(contractAddressString);
   const contractInstance = new Contract(contractAddress, contractAbi, wallet);
-  const Id = 3n;
-  const secret = 109730872847609188478309451572148122150330802072000585050763249942403213063436n;       
+  const Id = BigInt(process.env.ID2!);
+  const secret = BigInt(process.env.SECRET!);       
 
   try {
     const { transactionId, waitForResult } = await contractInstance.functions
