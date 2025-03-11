@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-anchor_htlc = "46QyQV1oDcu3CuRgwkrKSBGomScJ2J4UFNjbyRX9MVai"
+anchor_htlc = "CgUW4QzGdxJLuCtNaiGmGaeHexX7Tbaevo3uHPwZXoo"
 
 [registry]
 url = "https://api.apr.dev"

@@ -11,7 +11,7 @@ use anchor_spl::{
 };
 use sha2::{Digest, Sha256};
 use std::mem::size_of;
-declare_id!("46QyQV1oDcu3CuRgwkrKSBGomScJ2J4UFNjbyRX9MVai");
+declare_id!("CgUW4QzGdxJLuCtNaiGmGaeHexX7Tbaevo3uHPwZXoo");
 /// @title Pre Hashed Timelock Contracts (PHTLCs) on Solana SPL tokens.
 ///
 /// This contract provides a way to lock and keep PHTLCs for SPL tokens.
@@ -181,12 +181,12 @@ pub mod anchor_htlc {
         commit_bump: u8,
     ) -> Result<[u8; 32]> {
         let clock = Clock::get().unwrap();
-        require!(
-            timelock > clock.unix_timestamp.try_into().unwrap(),
-            HTLCError::NotFutureTimeLock
-        );
+        let time: u64 = clock.unix_timestamp.try_into().unwrap();
+        require!(timelock >= time + 900, HTLCError::InvalidTimeLock);
         require!(amount != 0, HTLCError::FundsNotSent);
+
         let htlc = &mut ctx.accounts.htlc;
+
         let bump_vector = commit_bump.to_le_bytes();
         let inner = vec![Id.as_ref(), bump_vector.as_ref()];
         let outer = vec![inner.as_slice()];
@@ -244,12 +244,10 @@ pub mod anchor_htlc {
         lock_bump: u8,
     ) -> Result<[u8; 32]> {
         let clock = Clock::get().unwrap();
-        require!(
-            timelock > clock.unix_timestamp.try_into().unwrap(),
-            HTLCError::NotFutureTimeLock
-        );
-
+        let time: u64 = clock.unix_timestamp.try_into().unwrap();
+        require!(timelock >= time + 900, HTLCError::InvalidTimeLock);
         require!(amount != 0, HTLCError::FundsNotSent);
+
         let htlc = &mut ctx.accounts.htlc;
 
         let bump_vector = lock_bump.to_le_bytes();
@@ -332,12 +330,13 @@ pub mod anchor_htlc {
         timelock: u64,
     ) -> Result<[u8; 32]> {
         let clock = Clock::get().unwrap();
-        require!(
-            timelock > clock.unix_timestamp.try_into().unwrap(),
-            HTLCError::NotFutureTimeLock
-        );
+        let time: u64 = clock.unix_timestamp.try_into().unwrap();
+        require!(timelock >= time + 900, HTLCError::InvalidTimeLock);
 
         let htlc = &mut ctx.accounts.htlc;
+
+        msg!("hashlock: {:?}", hex::encode(hashlock));
+        msg!("timelock: {:?}", timelock);
 
         htlc.hashlock = hashlock;
         htlc.timelock = timelock;
@@ -761,11 +760,10 @@ pub struct GetDetails<'info> {
     )]
     pub htlc: Box<Account<'info, HTLC>>,
 }
-
 #[error_code]
 pub enum HTLCError {
-    #[msg("Not Future TimeLock.")]
-    NotFutureTimeLock,
+    #[msg("Invalid TimeLock.")]
+    InvalidTimeLock,
     #[msg("Not Past TimeLock.")]
     NotPastTimeLock,
     #[msg("Invalid Reward TimeLock.")]
