@@ -1,0 +1,6 @@
+[package]
+name = "train"
+type = "contract"
+authors = [""]
+
+[dependencies]
