@@ -1,4 +1,4 @@
-pub fn bytes_to_u128_limbs(bytes: [u8; 32]) -> pub (u128, u128) {
+pub fn bytes_to_u128_limbs(bytes: [u8; 32]) -> (u128, u128) {
     let mut high: u128 = 0;
     let mut low: u128 = 0;
     for i in 0..16 {
@@ -10,7 +10,7 @@ pub fn bytes_to_u128_limbs(bytes: [u8; 32]) -> pub (u128, u128) {
     (high, low)
 }
 
-pub fn u128_limbs_to_bytes(high: u128, low: u128) -> pub [u8; 32] {
+pub fn u128_limbs_to_bytes(high: u128, low: u128) -> [u8; 32] {
     let mut bytes: [u8; 32] = [0; 32];
 
     let mut temp = high;
