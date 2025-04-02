@@ -4,8 +4,6 @@ use dep::aztec::macros::aztec;
 #[aztec]
 pub contract Train {
     use crate::lib::{bytes_to_u128_limbs, u128_limbs_to_bytes};
-    use dep::aztec::encrypted_logs::log_assembly_strategies::default_aes128::event::encode_and_encrypt_event;
-    use dep::aztec::event::event_interface::EventInterface;
     use dep::aztec::protocol_types::traits::{Packable, Serialize};
     use dep::aztec::state_vars::{private_immutable::PrivateImmutable, SharedMutable};
     use dep::sha256;
@@ -21,12 +19,12 @@ pub contract Train {
 
     #[note]
     #[derive(Eq)]
-    struct HTLC_Private_User {
+    struct HTLC_Private {
         owner: AztecAddress,
         randomness: Field,
     }
     #[derive(Eq, Packable)]
-    struct HTLC_Public_User {
+    struct HTLC_Public {
         src_receiver: AztecAddress,
         amount: u128,
         token: AztecAddress,
@@ -40,7 +38,7 @@ pub contract Train {
 
     #[derive(Serialize)]
     #[event]
-    struct TokenCommittedPublic {
+    struct TokenCommitted {
         Id: Field,
         amount: u128,
         token: AztecAddress,
@@ -54,7 +52,7 @@ pub contract Train {
 
     #[derive(Serialize)]
     #[event]
-    struct TokenLockAddedPublic {
+    struct TokenLockAdded {
         Id: Field,
         hashlock: [u8; 32],
         timelock: u64,
@@ -62,8 +60,30 @@ pub contract Train {
 
     #[derive(Serialize)]
     #[event]
-    struct TokenRefundedPublic {
+    struct TokenRefunded {
         Id: Field,
+    }
+
+    #[derive(Serialize)]
+    #[event]
+    struct TokenLocked {
+        Id: Field,
+        hashlock: [u8; 32],
+        amount: u128,
+        token: AztecAddress,
+        timelock: u64,
+        dst_chain: str<16>,
+        dst_asset: str<16>,
+        dst_address: str<64>,
+        src_asset: str<16>,
+    }
+
+    #[derive(Serialize)]
+    #[event]
+    struct TokenRedeemed {
+        Id: Field,
+        hashlock: [u8; 32],
+        secret: [u8; 32],
     }
 
     #[public]
@@ -72,8 +92,8 @@ pub contract Train {
 
     #[storage]
     struct Storage<Context> {
-        contracts_private_user: Map<Field, PrivateImmutable<HTLC_Private_User, Context>, Context>,
-        contracts_public_user: Map<Field, SharedMutable<HTLC_Public_User, 10, Context>, Context>,
+        contracts_private: Map<Field, PrivateImmutable<HTLC_Private, Context>, Context>,
+        contracts_public: Map<Field, SharedMutable<HTLC_Public, 10, Context>, Context>,
     }
 
     #[private]
@@ -93,7 +113,7 @@ pub contract Train {
 
         // Safety: Ensure that the commitment with the given Id is not already initialized.
         unsafe {
-            assert(!is_commitment_initialized(Id), "HTLCAlreadyExists");
+            assert(!is_contract_initialized(Id), "HTLCAlreadyExists");
         }
 
         // Safety: The contract intentionally exposes these parameters as public.
@@ -111,8 +131,8 @@ pub contract Train {
             );
         }
 
-        let htlc_note = HTLC_Private_User { owner: context.msg_sender(), randomness: randomness };
-        storage.contracts_private_user.at(Id).initialize(htlc_note);
+        let htlc_note = HTLC_Private { owner: context.msg_sender(), randomness: randomness };
+        storage.contracts_private.at(Id).initialize(htlc_note);
 
         Token::at(token)
             .transfer_in_private(context.msg_sender(), context.this_address(), amount, randomness)
@@ -133,7 +153,7 @@ pub contract Train {
         amount: u128,
     ) {
         assert(context.timestamp() + 900 < timelock, "InvalidTimelock");
-        let htlc_public = HTLC_Public_User {
+        let htlc_public = HTLC_Public {
             src_receiver: src_receiver,
             amount: amount,
             token: token,
@@ -144,8 +164,8 @@ pub contract Train {
             timelock: timelock,
             claimed: 1 as u8,
         };
-        storage.contracts_public_user.at(Id).schedule_value_change(htlc_public);
-        let log_msg = TokenCommittedPublic {
+        storage.contracts_public.at(Id).schedule_value_change(htlc_public);
+        let log_msg = TokenCommitted {
             Id: Id,
             amount: amount,
             token: token,
@@ -163,10 +183,10 @@ pub contract Train {
     fn add_lock_private_user(Id: Field, hashlock: [u8; 32], timelock: u64) {
         // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
         unsafe {
-            assert(is_commitment_initialized(Id), "HTLCNotExists");
+            assert(is_contract_initialized(Id), "HTLCNotExists");
         }
 
-        let htlc_private = storage.contracts_private_user.at(Id).get_note();
+        let htlc_private = storage.contracts_private.at(Id).get_note();
         assert(htlc_private.owner == context.msg_sender(), "NoAllowance");
 
         // Safety: The contract intentionally exposes these parameters as public.
@@ -180,13 +200,13 @@ pub contract Train {
     fn add_lock_public_user(Id: Field, hashlock: [u8; 32], timelock: u64) {
         assert(context.timestamp() + 900 < timelock, "InvalidTimelock");
 
-        let htlc_public = storage.contracts_public_user.at(Id).get_current_value();
+        let htlc_public = storage.contracts_public.at(Id).get_current_value();
         assert(htlc_public.claimed == 1, "AlreadyClaimed");
         assert(htlc_public.hashlock_high == (0 as u128), "HashlockAlreadySet");
         assert(htlc_public.hashlock_low == (0 as u128), "HashlockAlreadySet");
 
         let hashlock_tuple = bytes_to_u128_limbs(hashlock);
-        let modified_htlc_public = HTLC_Public_User {
+        let modified_htlc_public = HTLC_Public {
             src_receiver: htlc_public.src_receiver,
             amount: htlc_public.amount,
             token: htlc_public.token,
@@ -197,24 +217,24 @@ pub contract Train {
             timelock: timelock,
             claimed: htlc_public.claimed,
         };
-        storage.contracts_public_user.at(Id).schedule_value_change(modified_htlc_public);
-        let log_msg = TokenLockAddedPublic { Id, hashlock, timelock };
+        storage.contracts_public.at(Id).schedule_value_change(modified_htlc_public);
+        let log_msg = TokenLockAdded { Id, hashlock, timelock };
         context.emit_public_log(log_msg);
     }
 
     #[private]
-    fn refund_private_user(Id: Field, randomness: Field) {
+    fn refund_private(Id: Field, randomness: Field) {
         // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
         unsafe {
-            assert(is_commitment_initialized(Id), "HTLCNotExists");
+            assert(is_contract_initialized(Id), "HTLCNotExists");
         }
         // Safety: The contract intentionally exposes these parameters as public.
         unsafe {
-            refund_public_user(Id);
+            refund_public(Id);
         }
 
-        let htlc_private = storage.contracts_private_user.at(Id).get_note();
-        let htlc_public = storage.contracts_public_user.at(Id).get_current_value();
+        let htlc_private = storage.contracts_private.at(Id).get_note();
+        let htlc_public = storage.contracts_public.at(Id).get_current_value();
 
         Token::at(htlc_public.token)
             .transfer_in_private(
@@ -228,11 +248,11 @@ pub contract Train {
 
     #[public]
     #[internal]
-    fn refund_public_user(Id: Field) {
-        let htlc_public = storage.contracts_public_user.at(Id).get_current_value();
+    fn refund_public(Id: Field) {
+        let htlc_public = storage.contracts_public.at(Id).get_current_value();
         assert(htlc_public.claimed == 1, "AlreadyClaimed");
         assert(htlc_public.timelock < context.timestamp(), "NotPassedTimelock");
-        let modified_htlc_public = HTLC_Public_User {
+        let modified_htlc_public = HTLC_Public {
             src_receiver: htlc_public.src_receiver,
             amount: htlc_public.amount,
             token: htlc_public.token,
@@ -244,23 +264,159 @@ pub contract Train {
             claimed: 2 as u8,
         };
 
-        storage.contracts_public_user.at(Id).schedule_value_change(modified_htlc_public);
-        let log_msg = TokenRefundedPublic { Id };
+        storage.contracts_public.at(Id).schedule_value_change(modified_htlc_public);
+        let log_msg = TokenRefunded { Id };
         context.emit_public_log(log_msg);
     }
 
-    unconstrained fn is_commitment_initialized(Id: Field) -> bool {
-        storage.contracts_private_user.at(Id).is_initialized()
+    #[private]
+    fn lock_private_solver(
+        Id: Field,
+        hashlock: [u8; 32],
+        amount: u128,
+        timelock: u64,
+        token: AztecAddress,
+        randomness: Field,
+        dst_chain: str<16>,
+        dst_asset: str<16>,
+        dst_address: str<64>,
+        src_asset: str<16>,
+    ) {
+        // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
+        unsafe {
+            assert(!is_contract_initialized(Id), "HTLCAlreadyExists");
+        }
+        assert(amount > 0, "FundsNotSent");
+        // Safety: The contract intentionally exposes these parameters as public.
+        unsafe {
+            lock_public_solver(
+                Id,
+                hashlock,
+                amount,
+                token,
+                timelock,
+                dst_chain,
+                dst_asset,
+                dst_address,
+                src_asset,
+            );
+        }
+        let htlc_note = HTLC_Private { owner: context.msg_sender(), randomness: randomness };
+        storage.contracts_private.at(Id).initialize(htlc_note);
+
+        Token::at(token)
+            .transfer_in_private(context.msg_sender(), context.this_address(), amount, randomness)
+            .call(&mut context);
     }
 
-    #[test]
-    fn test_conversion() {
-        let original_bytes: [u8; 32] = [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32,
-        ];
-        let (high, low) = bytes_to_u128_limbs(original_bytes);
-        let reconstructed_bytes = u128_limbs_to_bytes(high, low);
-        assert(original_bytes == reconstructed_bytes);
+    #[internal]
+    #[public]
+    fn lock_public_solver(
+        Id: Field,
+        hashlock: [u8; 32],
+        amount: u128,
+        token: AztecAddress,
+        timelock: u64,
+        dst_chain: str<16>,
+        dst_asset: str<16>,
+        dst_address: str<64>,
+        src_asset: str<16>,
+    ) {
+        assert(context.timestamp() + 2700 < timelock, "InvalidTimelock");
+        let hashlock_tuple = bytes_to_u128_limbs(hashlock);
+        let htlc_public = HTLC_Public {
+            src_receiver: AztecAddress::zero(),
+            amount: amount,
+            token: token,
+            hashlock_high: hashlock_tuple.0,
+            hashlock_low: hashlock_tuple.1,
+            secret_high: 0 as u128,
+            secret_low: 0 as u128,
+            timelock: timelock,
+            claimed: 1 as u8,
+        };
+        storage.contracts_public.at(Id).schedule_value_change(htlc_public);
+
+        let log_msg = TokenLocked {
+            Id: Id,
+            hashlock: hashlock,
+            amount: amount,
+            token: token,
+            timelock: timelock,
+            dst_chain: dst_chain,
+            dst_asset: dst_asset,
+            dst_address: dst_address,
+            src_asset: src_asset,
+        };
+
+        context.emit_public_log(log_msg);
+    }
+
+    #[private]
+    fn redeem_private(Id: Field, secret: [u8; 32], randomness: Field) {
+        // Safety: The contract intentionally exposes these parameters as public.
+        unsafe {
+            redeem_public(Id, secret);
+        }
+
+        let htlc_public = storage.contracts_public.at(Id).get_current_value();
+
+        if htlc_public.src_receiver == AztecAddress::zero() {
+            Token::at(htlc_public.token)
+                .transfer_in_private(
+                    context.this_address(),
+                    context.msg_sender(),
+                    htlc_public.amount,
+                    randomness,
+                )
+                .call(&mut context);
+        } else {
+            Token::at(htlc_public.token)
+                .transfer_in_private(
+                    context.this_address(),
+                    htlc_public.src_receiver,
+                    htlc_public.amount,
+                    randomness,
+                )
+                .call(&mut context);
+        }
+    }
+
+    #[public]
+    #[internal]
+    fn redeem_public(Id: Field, secret: [u8; 32]) {
+        let htlc_public = storage.contracts_public.at(Id).get_current_value();
+        assert(htlc_public.amount > 0, "HTLCNotExists"); // If it doesn't exist, all parameters will default to zero values.
+        let hashed_secret = sha256::sha256_var(secret, secret.len() as u64);
+        let hashed_secret_tuple = bytes_to_u128_limbs(hashed_secret);
+        assert(htlc_public.hashlock_high == hashed_secret_tuple.0, "HashlockNotMatch");
+        assert(htlc_public.hashlock_low == hashed_secret_tuple.1, "HashlockNotMatch");
+        assert(htlc_public.claimed == 1, "AlreadyClaimed");
+
+        let modified_htlc_public = HTLC_Public {
+            src_receiver: htlc_public.src_receiver,
+            amount: htlc_public.amount,
+            token: htlc_public.token,
+            hashlock_high: htlc_public.hashlock_high,
+            hashlock_low: htlc_public.hashlock_low,
+            secret_high: htlc_public.secret_high,
+            secret_low: htlc_public.secret_low,
+            timelock: htlc_public.timelock,
+            claimed: 3 as u8,
+        };
+
+        storage.contracts_public.at(Id).schedule_value_change(modified_htlc_public);
+
+        let log_msg = TokenRedeemed {
+            Id: Id,
+            hashlock: u128_limbs_to_bytes(htlc_public.hashlock_high, htlc_public.hashlock_low),
+            secret: secret,
+        };
+
+        context.emit_public_log(log_msg);
+    }
+
+    unconstrained fn is_contract_initialized(Id: Field) -> bool {
+        storage.contracts_private.at(Id).is_initialized()
     }
 }
