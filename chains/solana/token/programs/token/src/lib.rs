@@ -5,13 +5,18 @@
 //    |_| |_| \_\/_/   \_\___|_| \_|    |_|   |_| \_\\___/ |_| \___/ \____\___/|_____|
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::ed25519_program::ID as ED25519_ID;
+use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::solana_program::sysvar::instructions::{load_instruction_at_checked, ID as IX_ID};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{CloseAccount, Mint, Token, TokenAccount, Transfer},
 };
 use sha2::{Digest, Sha256};
+use std::convert::TryInto;
 use std::mem::size_of;
-declare_id!("CgUW4QzGdxJLuCtNaiGmGaeHexX7Tbaevo3uHPwZXoo");
+
+declare_id!("AN8Y7CGKNQcBCLxeNmnob786v8EkWhrGBBriPD2JzjK8");
 /// @title Pre Hashed Timelock Contracts (PHTLCs) on Solana SPL tokens.
 ///
 /// This contract provides a way to lock and keep PHTLCs for SPL tokens.
@@ -91,7 +96,6 @@ fn transfer_htlc_out<'info>(
     Ok(())
 }
 
-/// @dev A small utility function that allows us to transfer funds and reward out of the htlc.
 fn transfer_htlc_reward_out<'info>(
     sender: AccountInfo<'info>,
     Id: [u8; 32],
@@ -151,6 +155,59 @@ fn transfer_htlc_reward_out<'info>(
         let cpi_ctx =
             CpiContext::new_with_signer(token_program.to_account_info(), ca, outer.as_slice());
         anchor_spl::token::close_account(cpi_ctx)?;
+    }
+
+    Ok(())
+}
+
+/// Verify serialized Ed25519Program instruction data
+pub fn check_ed25519_data(data: &[u8], pubkey: &[u8], msg: &[u8], sig: &[u8]) -> Result<()> {
+    // According to this layout used by the Ed25519Program
+    // https://github.com/solana-labs/solana-web3.js/blob/master/src/ed25519-program.ts#L33
+
+    // "Deserializing" byte slices
+
+    let num_signatures = &[data[0]]; // Byte  0
+    let padding = &[data[1]]; // Byte  1
+    let signature_offset = &data[2..=3]; // Bytes 2,3
+    let signature_instruction_index = &data[4..=5]; // Bytes 4,5
+    let public_key_offset = &data[6..=7]; // Bytes 6,7
+    let public_key_instruction_index = &data[8..=9]; // Bytes 8,9
+    let message_data_offset = &data[10..=11]; // Bytes 10,11
+    let message_data_size = &data[12..=13]; // Bytes 12,13
+    let message_instruction_index = &data[14..=15]; // Bytes 14,15
+
+    let data_pubkey = &data[16..16 + 32]; // Bytes 16..16+32
+    let data_sig = &data[48..48 + 64]; // Bytes 48..48+64
+    let data_msg = &data[112..]; // Bytes 112..end
+
+    // Expected values
+
+    let exp_public_key_offset: u16 = 16; // 2*u8 + 7*u16
+    let exp_signature_offset: u16 = exp_public_key_offset + pubkey.len() as u16;
+    let exp_message_data_offset: u16 = exp_signature_offset + sig.len() as u16;
+    let exp_num_signatures: u8 = 1;
+    let exp_message_data_size: u16 = msg.len().try_into().unwrap();
+
+    // Header and Arg Checks
+
+    // Header
+    if num_signatures != &exp_num_signatures.to_le_bytes()
+        || padding != &[0]
+        || signature_offset != &exp_signature_offset.to_le_bytes()
+        || signature_instruction_index != &u16::MAX.to_le_bytes()
+        || public_key_offset != &exp_public_key_offset.to_le_bytes()
+        || public_key_instruction_index != &u16::MAX.to_le_bytes()
+        || message_data_offset != &exp_message_data_offset.to_le_bytes()
+        || message_data_size != &exp_message_data_size.to_le_bytes()
+        || message_instruction_index != &u16::MAX.to_le_bytes()
+    {
+        return Err(HTLCError::SigVerificationFailed.into());
+    }
+
+    // Arguments
+    if data_pubkey != pubkey || data_msg != msg || data_sig != sig {
+        return Err(HTLCError::SigVerificationFailed.into());
     }
 
     Ok(())
@@ -284,9 +341,6 @@ pub mod anchor_htlc {
         Ok(Id)
     }
 
-    /// @dev Solver / Payer sets the reward for claiming the funds.
-    /// @param reward the amount of the reward token.
-    /// @param reward_timelock After this time the rewards can be claimed.
     pub fn lock_reward(
         ctx: Context<LockReward>,
         Id: [u8; 32],
@@ -345,6 +399,71 @@ pub mod anchor_htlc {
 
         htlc.hashlock = hashlock;
         htlc.timelock = timelock;
+
+        Ok(Id)
+    }
+
+    /// @dev Called by the solver to add hashlock to the HTLC
+    ///
+    /// @param Id of the HTLC.
+    /// @param hashlock to be added.
+    pub fn add_lock_sig(
+        ctx: Context<AddLockSig>,
+        Id: [u8; 32],
+        hashlock: [u8; 32],
+        timelock: u64,
+        signature: [u8; 64],
+    ) -> Result<[u8; 32]> {
+        let clock = Clock::get().unwrap();
+        let time: u64 = clock.unix_timestamp.try_into().unwrap();
+        require!(timelock >= time + 900, HTLCError::InvalidTimeLock);
+        let htlc = &mut ctx.accounts.htlc;
+        let signer = htlc.sender.to_bytes();
+
+        let ix: Instruction = load_instruction_at_checked(0, &ctx.accounts.ix_sysvar)?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(Id.clone());
+        hasher.update(hashlock.clone());
+        hasher.update(timelock.to_le_bytes());
+        let hash = hasher.finalize();
+
+        let signing_domain: &[u8; 16] = b"\xffsolana offchain";
+        let header_version: [u8; 1] = [0u8]; // Version 0
+        let mut application_domain = [0u8; 32];
+        application_domain[..5].copy_from_slice(b"Train");
+        let message_format = [0u8]; // Assuming Restricted ASCII
+        let signer_count = [1u8]; // One signer
+        let message_length = (hash.len() as u16).to_le_bytes();
+
+        let mut full_message = Vec::new();
+        full_message.extend_from_slice(signing_domain);
+        full_message.extend_from_slice(&header_version);
+        full_message.extend_from_slice(&application_domain);
+        full_message.extend_from_slice(&message_format);
+        full_message.extend_from_slice(&signer_count);
+        full_message.extend_from_slice(&signer);
+        full_message.extend_from_slice(&message_length);
+        full_message.extend_from_slice(&hash);
+
+        // Check that ix is what we expect to have been sent
+        if ix.program_id!= ED25519_ID ||  // The program id we expect
+        ix.accounts.len()!= 0
+        // With no context accounts
+        || ix.data.len()!= (16 + 64 + 32 + full_message.len())
+        // And data of this size
+        {
+            return Err(HTLCError::SigVerificationFailed.into());
+        }
+
+        check_ed25519_data(&ix.data, &signer, &full_message, &signature)?;
+
+        htlc.hashlock = hashlock;
+        htlc.timelock = timelock;
+
+        msg!("Id: {:?}", hex::encode(Id));
+        msg!("hashlock: {:?}", hex::encode(hashlock));
+        msg!("timelock: {:?}", timelock);
 
         Ok(Id)
     }
@@ -497,45 +616,22 @@ pub mod anchor_htlc {
 #[account]
 #[derive(Default)]
 pub struct HTLC {
-    /// @dev The address to recieve funds.
     pub dst_address: String,
-    /// @dev The chain where funds will be received.
     pub dst_chain: String,
-    /// @dev The type of the receiving asset.
     pub dst_asset: String,
-    /// @dev The type of the sending asset.
     pub src_asset: String,
-    /// @dev The creator of the HTLC.
     pub sender: Pubkey,
-    /// @dev The recipient of the funds if conditions are met.
     pub src_receiver: Pubkey,
-    /// @dev The hash of the secret required for redeem.
     pub hashlock: [u8; 32],
-    /// @dev The secret required to redeem.
     pub secret: [u8; 32],
-    /// @dev The amount of funds locked in the HTLC.
     pub amount: u64,
-    /// @dev The timestamp after which the funds can be refunded.
-    pub timelock: u64,
-    /// @dev The amount of the reward in SPL token to be claimed.
+    pub timelock: u64, //TODO: check if this should be u256
     pub reward: u64,
-    /// @dev The timestamp after which the reward can be claimed
-    /// (if claimed before than the reward will be sent back to the Solver).
-    pub reward_timelock: u64,
-    /// @dev The SPL token contract address.
+    pub reward_timelock: u64, //TODO: check if this should be u256
     pub token_contract: Pubkey,
-    /// @dev The htlc_token_account address.
     pub token_wallet: Pubkey,
-    /// @dev Indicates whether the funds were claimed (redeemed(3) or refunded(2)).
     pub claimed: u8,
 }
-/// @dev Commit context.
-/// @param ID The Id of HTLC.
-/// @param sender The sender of the funds.
-/// @param htlc The PreHTLC to be created.
-/// @param htlc_token_account The token account of the PreHTLC(where the funds will be stored).
-/// @param token_contract The type of the token.
-/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], commit_bump: u8)]
 pub struct Commit<'info> {
@@ -577,13 +673,6 @@ pub struct Commit<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-/// @dev Lock context.
-/// @param ID The Id of HTLC.
-/// @param sender The sender of the funds.
-/// @param htlc The HTLC to be created.
-/// @param htlc_token_account The token account of the HTLC(where the funds will be stored).
-/// @param token_contract The type of the token.
-/// @param sender_token_account The token account of the sender.
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32], lock_bump: u8)]
 pub struct Lock<'info> {
@@ -626,13 +715,7 @@ pub struct Lock<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
-/// @dev LockReward context.
-/// @param ID The Id of HTLC.
-/// @param sender The sender of the reward.
-/// @param htlc The HTLC to add the reward.
-/// @param htlc_token_account The token account of the HTLC(where the reward will be stored).
-/// @param token_contract The type of the token.
-/// @param sender_token_account The token account of the sender.
+
 #[derive(Accounts)]
 #[instruction(Id: [u8; 32])]
 pub struct LockReward<'info> {
@@ -663,17 +746,7 @@ pub struct LockReward<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
-/// @dev Redeem context.
-/// @param ID The Id of HTLC.
-/// @param user_signing The user calling the function.
-/// @param sender The sender of the HTLC.
-/// @param src_receiver The receiver of the HTLC.
-/// @param token_contract The type of the token.
-/// @param htlc The HTLC to redeem from.
-/// @param htlc_token_account The token account of the HTLC.
-/// @param sender_token_account The token account of the sender.
-/// @param receiver_token_account The token account of the receiver.
-/// @param reward_token_account The token account to send the reward.
+
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], htlc_bump: u8)]
 pub struct Redeem<'info> {
@@ -734,14 +807,7 @@ pub struct Redeem<'info> {
     associated_token_program: Program<'info, AssociatedToken>,
     rent: Sysvar<'info, Rent>,
 }
-/// @dev Refund context.
-/// @param ID The Id of HTLC.
-/// @param user_signing The user calling the function.
-/// @param sender The sender of the HTLC.
-/// @param token_contract The type of the token.
-/// @param htlc The HTLC to refund.
-/// @param htlc_token_account The token account of the HTLC.
-/// @param sender_token_account The token account of the sender.
+
 #[derive(Accounts)]
 #[instruction(Id: [u8;32], htlc_bump: u8)]
 pub struct Refund<'info> {
@@ -785,17 +851,12 @@ pub struct Refund<'info> {
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }
-/// @dev AddLock context.
-/// @param ID The Id of HTLC.
-/// @param sender The sender of the HTLC.
-/// @param payer The Payer of the transaction.
-/// @param htlc The HTLC to add the hashlock.
+
 #[derive(Accounts)]
 #[instruction(Id: [u8;32])]
 pub struct AddLock<'info> {
-    sender: Signer<'info>,
     #[account(mut)]
-    payer: Signer<'info>,
+    sender: Signer<'info>,
     #[account(mut,
     seeds = [
         Id.as_ref()
@@ -810,9 +871,32 @@ pub struct AddLock<'info> {
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
 }
-/// @dev GetDetails context.
-/// @param ID The Id of HTLC.
-/// @param htlc The HTLC.
+
+#[derive(Accounts)]
+#[instruction(Id: [u8;32])]
+pub struct AddLockSig<'info> {
+    #[account(mut)]
+    payer: Signer<'info>,
+    #[account(mut,
+    seeds = [
+        Id.as_ref()
+    ],
+    bump,
+    constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
+    constraint = htlc.hashlock == [0u8;32] @ HTLCError::HashlockAlreadySet,
+    )]
+    pub htlc: Box<Account<'info, HTLC>>,
+
+    /// CHECK: The address check is needed because otherwise
+    /// the supplied Sysvar could be anything else.
+    /// The Instruction Sysvar has not been implemented
+    /// in the Anchor framework yet, so this is the safe approach.
+    #[account(address = IX_ID)]
+    pub ix_sysvar: AccountInfo<'info>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
+}
+
 #[derive(Accounts)]
 #[instruction(Id: [u8;32])]
 pub struct GetDetails<'info> {
@@ -852,4 +936,6 @@ pub enum HTLCError {
     NotReciever,
     #[msg("Wrong Token.")]
     NoToken,
+    #[msg("Signature verification failed.")]
+    SigVerificationFailed,
 }
