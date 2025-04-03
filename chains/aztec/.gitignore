@@ -1,3 +1,4 @@
 .env
 contracts/train/target/*
 !contracts/train/target/train-Main.json
+scripts/node_modules/
