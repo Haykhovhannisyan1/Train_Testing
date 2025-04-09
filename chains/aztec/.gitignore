@@ -1,4 +1,7 @@
-.env
 contracts/train/target/*
-!contracts/train/target/train-Main.json
+contracts/token/target/*
+
+!contracts/train/target/train-Train.json
+!contracts/token/target/token-Token.json
+
 scripts/node_modules/
