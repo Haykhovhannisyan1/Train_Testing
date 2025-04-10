@@ -5,3 +5,4 @@ contracts/token/target/*
 !contracts/token/target/token-Token.json
 
 scripts/node_modules/
+scripts/data.json

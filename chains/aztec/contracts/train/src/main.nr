@@ -10,7 +10,7 @@ pub contract Train {
     use dep::token::Token;
     use aztec::macros::{
         events::event,
-        functions::{initializer, internal, private, public},
+        functions::{initializer, internal, private, public, utility},
         notes::note,
         storage::storage,
     };
@@ -36,6 +36,7 @@ pub contract Train {
         claimed: u8,
     }
 
+    // TODO: Figure out how to emit all required data while staying within the public log size limit.
     #[derive(Serialize)]
     #[event]
     struct TokenCommitted {
@@ -43,10 +44,9 @@ pub contract Train {
         amount: u128,
         token: AztecAddress,
         timelock: u64,
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        // dst_chain: str<8>,
+        // dst_asset: str<8>,
+        // dst_address: str<48>,
         src_receiver: AztecAddress,
     }
 
@@ -68,14 +68,13 @@ pub contract Train {
     #[event]
     struct TokenLocked {
         Id: Field,
-        hashlock: [u8; 32],
+        // hashlock: [u8; 32],
         amount: u128,
         token: AztecAddress,
         timelock: u64,
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        // dst_chain: str<8>,
+        // dst_asset: str<8>,
+        // dst_address: str<48>,
     }
 
     #[derive(Serialize)]
@@ -103,33 +102,26 @@ pub contract Train {
         timelock: u64,
         token: AztecAddress,
         amount: u128,
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        dst_chain: str<8>,
+        dst_asset: str<8>,
+        dst_address: str<48>,
         randomness: Field,
     ) {
         assert(amount > 0, "Funds Not Sent");
 
-        // Safety: Ensure that the commitment with the given Id is not already initialized.
-        unsafe {
-            assert(!is_contract_initialized(Id), "HTLCAlreadyExists");
-        }
-
         // Safety: The contract intentionally exposes these parameters as public.
-        unsafe {
-            commit_public_user(
+        Train::at(context.this_address())
+            .commit_public_user(
                 dst_chain,
                 dst_asset,
                 dst_address,
-                src_asset,
                 Id,
                 src_receiver,
                 timelock,
                 token,
                 amount,
-            );
-        }
+            )
+            .enqueue(&mut context);
 
         let htlc_note = HTLC_Private { owner: context.msg_sender(), randomness: randomness };
         storage.contracts_private.at(Id).initialize(htlc_note);
@@ -142,10 +134,9 @@ pub contract Train {
     #[internal]
     #[public]
     fn commit_public_user(
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        dst_chain: str<8>,
+        dst_asset: str<8>,
+        dst_address: str<48>,
         Id: Field,
         src_receiver: AztecAddress,
         timelock: u64,
@@ -170,10 +161,9 @@ pub contract Train {
             amount: amount,
             token: token,
             timelock: timelock,
-            dst_chain: dst_chain,
-            dst_asset: dst_asset,
-            dst_address: dst_address,
-            src_asset: src_asset,
+            // dst_chain: dst_chain,
+            // dst_asset: dst_asset,
+            // dst_address: dst_address,
             src_receiver: src_receiver,
         };
         context.emit_public_log(log_msg);
@@ -181,18 +171,13 @@ pub contract Train {
 
     #[private]
     fn add_lock_private_user(Id: Field, hashlock: [u8; 32], timelock: u64) {
-        // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
-        unsafe {
-            assert(is_contract_initialized(Id), "HTLCNotExists");
-        }
-
         let htlc_private = storage.contracts_private.at(Id).get_note();
         assert(htlc_private.owner == context.msg_sender(), "NoAllowance");
 
         // Safety: The contract intentionally exposes these parameters as public.
-        unsafe {
-            add_lock_public_user(Id, hashlock, timelock);
-        }
+        Train::at(context.this_address()).add_lock_public_user(Id, hashlock, timelock).enqueue(
+            &mut context,
+        );
     }
 
     #[internal]
@@ -224,14 +209,8 @@ pub contract Train {
 
     #[private]
     fn refund_private(Id: Field, randomness: Field) {
-        // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
-        unsafe {
-            assert(is_contract_initialized(Id), "HTLCNotExists");
-        }
         // Safety: The contract intentionally exposes these parameters as public.
-        unsafe {
-            refund_public(Id);
-        }
+        Train::at(context.this_address()).refund_public(Id).enqueue(&mut context);
 
         let htlc_private = storage.contracts_private.at(Id).get_note();
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
@@ -277,19 +256,14 @@ pub contract Train {
         timelock: u64,
         token: AztecAddress,
         randomness: Field,
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        dst_chain: str<8>,
+        dst_asset: str<8>,
+        dst_address: str<48>,
     ) {
-        // Safety: Ensures that the commitment with the given Id is initialized before proceeding.
-        unsafe {
-            assert(!is_contract_initialized(Id), "HTLCAlreadyExists");
-        }
         assert(amount > 0, "FundsNotSent");
         // Safety: The contract intentionally exposes these parameters as public.
-        unsafe {
-            lock_public_solver(
+        Train::at(context.this_address())
+            .lock_public_solver(
                 Id,
                 hashlock,
                 amount,
@@ -298,9 +272,9 @@ pub contract Train {
                 dst_chain,
                 dst_asset,
                 dst_address,
-                src_asset,
-            );
-        }
+            )
+            .enqueue(&mut context);
+
         let htlc_note = HTLC_Private { owner: context.msg_sender(), randomness: randomness };
         storage.contracts_private.at(Id).initialize(htlc_note);
 
@@ -317,10 +291,9 @@ pub contract Train {
         amount: u128,
         token: AztecAddress,
         timelock: u64,
-        dst_chain: str<16>,
-        dst_asset: str<16>,
-        dst_address: str<64>,
-        src_asset: str<16>,
+        dst_chain: str<8>,
+        dst_asset: str<8>,
+        dst_address: str<48>,
     ) {
         assert(context.timestamp() + 2700 < timelock, "InvalidTimelock");
         let hashlock_tuple = bytes_to_u128_limbs(hashlock);
@@ -339,14 +312,13 @@ pub contract Train {
 
         let log_msg = TokenLocked {
             Id: Id,
-            hashlock: hashlock,
+            // hashlock: hashlock,
             amount: amount,
             token: token,
             timelock: timelock,
-            dst_chain: dst_chain,
-            dst_asset: dst_asset,
-            dst_address: dst_address,
-            src_asset: src_asset,
+            // dst_chain: dst_chain,
+            // dst_asset: dst_asset,
+            // dst_address: dst_address,
         };
 
         context.emit_public_log(log_msg);
@@ -355,9 +327,7 @@ pub contract Train {
     #[private]
     fn redeem_private(Id: Field, secret: [u8; 32], randomness: Field) {
         // Safety: The contract intentionally exposes these parameters as public.
-        unsafe {
-            redeem_public(Id, secret);
-        }
+        Train::at(context.this_address()).redeem_public(Id, secret).enqueue(&mut context);
 
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
 
@@ -416,6 +386,9 @@ pub contract Train {
         context.emit_public_log(log_msg);
     }
 
+    // This utility function should be invoked by the frontend before each function call
+    // where the existence or non-existence of an HTLC is a critical security check.
+    #[utility]
     unconstrained fn is_contract_initialized(Id: Field) -> bool {
         storage.contracts_private.at(Id).is_initialized()
     }
