@@ -33,7 +33,8 @@ async function main() {
   const mintTx2 = await contract.methods.transfer_to_private(recipientWallet.getAddress(), amount/2n).send().wait();
   console.log(`Private transfer successful in block ${mintTx2.blockNumber}`);
 
-  const balanceResult2 = await contract.methods.balance_of_private(recipientWallet.getAddress()).simulate();
+  const contract2 = await Contract.at(token.address, TokenContractArtifact, recipientWallet );
+  const balanceResult2 = await contract2.methods.balance_of_private(recipientWallet.getAddress()).simulate();
   console.log(`Balance of ${recipientWallet.getAddress()} : ${balanceResult2}`);
 
   updateData({

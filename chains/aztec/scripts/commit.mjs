@@ -20,7 +20,7 @@ async function main() {
   const Id = generateId();
   const src_receiver = data.src_receiver;
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const timelock = now + 1000n;
+  const timelock = now + 1009n;
   const token = data.token;
   const amount = 3n;
   const dst_chain = 'TON'.padEnd(8, ' ');
@@ -66,9 +66,9 @@ async function main() {
   ).send({ authWitnesses: [witness] }).wait();
 
   console.log("tx : ", commitTx);
-  console.log("private balance of sender: ",await asset.methods.balance_of_private(senderWallet.getAddress()).simulate())
+  console.log("private balance of sender: ",await asset.methods.balance_of_private(senderWallet.getAddress()).simulate());
   publicLogs(pxe);
-  updateData({commitId: Id.toString()});
+  updateData({commitId: Id.toString(),sender: senderWallet.getAddress()});
 }
 
 main().catch((err) => {
