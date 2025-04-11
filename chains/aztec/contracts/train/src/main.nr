@@ -4,13 +4,14 @@ use dep::aztec::macros::aztec;
 #[aztec]
 pub contract Train {
     use crate::lib::{bytes_to_u128_limbs, u128_limbs_to_bytes};
+    use dep::aztec::encrypted_logs::log_assembly_strategies::default_aes128::note::encode_and_encrypt_note;
     use dep::aztec::protocol_types::traits::{Packable, Serialize};
     use dep::aztec::state_vars::{private_immutable::PrivateImmutable, SharedMutable};
     use dep::sha256;
     use dep::token::Token;
     use aztec::macros::{
         events::event,
-        functions::{initializer, internal, private, public, utility},
+        functions::{initializer, internal, private, public, utility, view},
         notes::note,
         storage::storage,
     };
@@ -23,8 +24,8 @@ pub contract Train {
         owner: AztecAddress,
         randomness: Field,
     }
-    #[derive(Eq, Packable)]
-    struct HTLC_Public {
+    #[derive(Eq, Packable, Serialize)]
+    pub struct HTLC_Public {
         src_receiver: AztecAddress,
         amount: u128,
         token: AztecAddress,
@@ -54,7 +55,7 @@ pub contract Train {
     #[event]
     struct TokenLockAdded {
         Id: Field,
-        hashlock: [u8; 32],
+        // hashlock: [u8; 32],
         timelock: u64,
     }
 
@@ -92,7 +93,7 @@ pub contract Train {
     #[storage]
     struct Storage<Context> {
         contracts_private: Map<Field, PrivateImmutable<HTLC_Private, Context>, Context>,
-        contracts_public: Map<Field, SharedMutable<HTLC_Public, 10, Context>, Context>,
+        contracts_public: Map<Field, SharedMutable<HTLC_Public, 1, Context>, Context>, // later block deplay number can be changed to smth reasonable
     }
 
     #[private]
@@ -124,7 +125,11 @@ pub contract Train {
             .enqueue(&mut context);
 
         let htlc_note = HTLC_Private { owner: context.msg_sender(), randomness: randomness };
-        storage.contracts_private.at(Id).initialize(htlc_note);
+        storage.contracts_private.at(Id).initialize(htlc_note).emit(encode_and_encrypt_note(
+            &mut context,
+            context.msg_sender(),
+            context.msg_sender(),
+        ));
 
         Token::at(token)
             .transfer_in_private(context.msg_sender(), context.this_address(), amount, randomness)
@@ -203,7 +208,8 @@ pub contract Train {
             claimed: htlc_public.claimed,
         };
         storage.contracts_public.at(Id).schedule_value_change(modified_htlc_public);
-        let log_msg = TokenLockAdded { Id, hashlock, timelock };
+        // let log_msg = TokenLockAdded { Id, hashlock, timelock };
+        let log_msg = TokenLockAdded { Id, timelock };
         context.emit_public_log(log_msg);
     }
 
@@ -392,4 +398,11 @@ pub contract Train {
     unconstrained fn is_contract_initialized(Id: Field) -> bool {
         storage.contracts_private.at(Id).is_initialized()
     }
+
+    #[view]
+    #[public]
+    fn get_htlc_public(key: Field) -> pub HTLC_Public {
+        storage.contracts_public.at(key).get_current_value()
+    }
+
 }
