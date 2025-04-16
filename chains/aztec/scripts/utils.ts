@@ -1,0 +1,114 @@
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import crypto from 'crypto';
+
+const dataFile = 'data.json';
+
+/**
+ * Updates the JSON data file with new data.
+ * @param newData - An object containing new data to merge.
+ */
+export function updateData(newData: Record<string, any>): void {
+  let data: Record<string, any> = {};
+  if (existsSync(dataFile)) {
+    try {
+      data = JSON.parse(readFileSync(dataFile, 'utf8'));
+    } catch (error) {
+      console.error('Error reading data file, starting fresh.');
+    }
+  }
+  Object.assign(data, newData);
+  writeFileSync(dataFile, JSON.stringify(data, null, 2));
+}
+
+/**
+ * Reads data from the JSON data file.
+ * @returns The data object read from the file. Returns an empty object if reading fails.
+ */
+export function readData(): Record<string, any> {
+  if (!existsSync(dataFile)) {
+    console.error(`File ${dataFile} does not exist.`);
+    return {};
+  }
+  try {
+    const data = readFileSync(dataFile, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading data file:', error);
+    return {};
+  }
+}
+
+/**
+ * Generates a secret and its SHA-256 hash lock.
+ * @returns A tuple with the secret and hash lock as Uint8Arrays.
+ */
+export function generateSecretAndHashlock(): [Uint8Array, Uint8Array] {
+  const secret = crypto.randomBytes(32);
+  const hashlock = crypto.createHash('sha256').update(secret).digest();
+  return [new Uint8Array(secret), new Uint8Array(hashlock)];
+}
+
+/**
+ * Generates a unique identifier using random bytes.
+ * @returns A bigint identifier.
+ */
+export function generateId(): bigint {
+  const bytes = crypto.randomBytes(24);
+  return BigInt('0x' + bytes.toString('hex'));
+}
+
+/**
+ * Retrieves and logs public logs using the provided blockchain interface.
+ * @param pxe - An object with blockchain methods.
+ * @returns A promise that resolves with an array of logs.
+ */
+export async function publicLogs(pxe: any): Promise<any[]> {
+  const fromBlock = await pxe.getBlockNumber();
+  const logFilter = { fromBlock, toBlock: fromBlock + 1 };
+  const { logs } = await pxe.getPublicLogs(logFilter);
+  console.log('Public logs: ', logs);
+  return logs;
+}
+
+/**
+ * Converts a comma-separated string of numbers to a Uint8Array.
+ * @param str - The input string.
+ * @returns A Uint8Array representing the numbers.
+ */
+export function stringToUint8Array(str: string): Uint8Array {
+  return new Uint8Array(str.split(',').map((num) => Number(num.trim())));
+}
+
+/**
+ * Simulates block passing by minting tokens in each block.
+ * @param pxe - An object that provides blockchain methods.
+ * @param contract - A contract instance with the minting method.
+ * @param wallet - A wallet instance used for transactions.
+ * @param numBlocks - Number of blocks to simulate (default is 1).
+ */
+export async function simulateBlockPassing(
+  pxe: any,
+  contract: any,
+  wallet: any,
+  numBlocks: number = 1,
+): Promise<void> {
+  for (let i = 0; i < numBlocks; i++) {
+    await contract.methods
+      .mint_to_public(wallet.getAddress(), 1000n)
+      .send()
+      .wait();
+    console.log(`Simulated block ${await pxe.getBlockNumber()} passed.`);
+  }
+}
+
+/**
+ * Fetches and logs HTLC details for a given Id.
+ * @param contract - A contract instance with HTLC methods.
+ * @param Id - The identifier for the HTLC.
+ */
+export async function getHTLCDetails(contract: any, Id: any): Promise<void> {
+  console.log(
+    `HTLC Details for Id ${Id}: `,
+    await contract.methods.get_htlc_public(Id).simulate(),
+  );
+}
