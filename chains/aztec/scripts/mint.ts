@@ -1,20 +1,15 @@
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import {
+  AztecAddress,
   Contract,
-  createPXEClient,
-  waitForPXE,
 } from '@aztec/aztec.js';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
-import { updateData } from './utils.ts';
+import { connectPXE, updateData } from './utils.ts';
 
 const TokenContractArtifact = TokenContract.artifact;
-const { PXE_URL = 'http://localhost:8080' } = process.env;
 
 async function main(): Promise<void> {
-  console.log(`Connecting to PXE at ${PXE_URL}...`);
-  const pxe = createPXEClient(PXE_URL);
-  await waitForPXE(pxe);
-
+  const pxe = await connectPXE(8080);
   const [recipientWallet, deployerWallet]: any[] =
     await getInitialTestAccountsWallets(pxe);
   const deployerAddress: string = deployerWallet.getAddress();
@@ -34,7 +29,7 @@ async function main(): Promise<void> {
   const amount = 9876543210n;
   console.log(`Minting ${amount} tokens...`);
   const contract = await Contract.at(
-    token.address,
+    AztecAddress.fromString(token.address.toString()),
     TokenContractArtifact,
     deployerWallet,
   );
@@ -60,7 +55,7 @@ async function main(): Promise<void> {
   console.log(`Private transfer successful in block ${mintTx2.blockNumber}`);
 
   const contract2 = await Contract.at(
-    token.address,
+    AztecAddress.fromString(token.address.toString()),
     TokenContractArtifact,
     recipientWallet,
   );
@@ -71,7 +66,6 @@ async function main(): Promise<void> {
   console.log(
     `Balance of ${deployerAddress}: ${await contract.methods.balance_of_private(deployerAddress).simulate()}`,
   );
-
   updateData({
     token: token.address.toString(),
     tokenOwner: deployerWallet.getAddress(),

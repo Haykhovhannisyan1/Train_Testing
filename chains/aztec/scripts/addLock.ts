@@ -2,9 +2,6 @@ import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import {
   AztecAddress,
   Contract,
-  createPXEClient,
-  loadContractArtifact,
-  waitForPXE,
 } from '@aztec/aztec.js';
 import { TrainContract } from './Train.ts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
@@ -16,15 +13,13 @@ import {
   updateData,
   simulateBlockPassing,
   getHTLCDetails,
+  connectPXE,
 } from './utils.ts';
 
 const TrainContractArtifact = TrainContract.artifact;
-const { PXE_URL = 'http://localhost:8080' } = process.env;
 
 async function main(): Promise<void> {
-  console.log(`Connecting to PXE at ${PXE_URL}...`);
-  const pxe = createPXEClient(PXE_URL);
-  await waitForPXE(pxe);
+  const pxe = await connectPXE(8080);
 
   const [senderWallet, wallet2, wallet3]: any[] =
     await getInitialTestAccountsWallets(pxe);
@@ -47,6 +42,10 @@ async function main(): Promise<void> {
     TrainContractArtifact,
     senderWallet,
   );
+    const is_contract_initialized = await contract.methods
+      .is_contract_initialized(Id)
+      .simulate();
+    if (!is_contract_initialized) throw new Error('HTLC Does Not Exsist');
   const addLockTx = await contract.methods
     .add_lock_private_user(Id, stringToUint8Array(data.hashlock0), timelock)
     .send()

@@ -16,14 +16,17 @@ import {
   getHTLCDetails,
   simulateBlockPassing,
 } from './utils.ts';
+import { CheatCodes } from '@aztec/aztec.js/testing';
 
 const TrainContractArtifact = TrainContract.artifact;
 const { PXE_URL = 'http://localhost:8080' } = process.env;
+const ethRpcUrl = 'http://localhost:8545';
 
 async function main(): Promise<void> {
   console.log(`Connecting to PXE at ${PXE_URL}...`);
   const pxe = createPXEClient(PXE_URL);
   await waitForPXE(pxe);
+  const cc = await CheatCodes.create([ethRpcUrl], pxe);
 
   const [solverWallet, recipientWallet]: any[] =
     await getInitialTestAccountsWallets(pxe);
@@ -35,8 +38,11 @@ async function main(): Promise<void> {
   const pair = generateSecretAndHashlock();
   const hashlock = pair[1];
   const amount = 7n;
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  const timelock = now + 3000n;
+  // const now = BigInt(Math.floor(Date.now() / 1000));
+  const now = await cc.aztec.timestamp();
+  console.log('now: ', now);
+  const timelock = now + 3000;
+  console.log('timelock: ', timelock);
   const token: string = data.token;
   const randomness = generateId();
   const dst_chain = 'TON'.padEnd(8, ' ');
@@ -75,6 +81,10 @@ async function main(): Promise<void> {
     TrainContractArtifact,
     solverWallet,
   );
+  const is_contract_initialized = await contract.methods
+    .is_contract_initialized(Id)
+    .simulate();
+  if (is_contract_initialized) throw new Error('HTLC Exsists');
   const lockTx = await contract.methods
     .lock_private_solver(
       Id,

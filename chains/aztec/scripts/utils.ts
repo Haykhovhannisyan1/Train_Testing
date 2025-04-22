@@ -1,5 +1,10 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import crypto from 'crypto';
+import http from 'http';
+import https from 'https';
+import { createPXEClient, PXE, waitForPXE } from '@aztec/aztec.js';
+
+const DEFAULT_HOST = 'localhost';
 
 const dataFile = 'data.json';
 
@@ -111,4 +116,46 @@ export async function getHTLCDetails(contract: any, Id: any): Promise<void> {
     `HTLC Details for Id ${Id}: `,
     await contract.methods.get_htlc_public(Id).simulate(),
   );
+}
+
+export async function connectPXE(
+  port: number,
+  options: {
+    host?: string;
+    protocol?: 'http' | 'https';
+  } = {},
+): Promise<PXE> {
+  const host = process.env.PXE_HOST ?? options.host ?? DEFAULT_HOST;
+  const protocol =
+    options.protocol ?? (process.env.PXE_HTTPS === 'true' ? 'https' : 'http');
+  const clientLib = protocol === 'https' ? https : http;
+
+  await new Promise<void>((resolve, reject) => {
+    const req = clientLib.request(
+      {
+        hostname: host,
+        port,
+        method: 'HEAD',
+        path: '/',
+        timeout: 2000,
+        ...(protocol === 'https' ? { rejectUnauthorized: false } : {}),
+      },
+      (res) => {
+        res.destroy();
+        resolve();
+      },
+    );
+    req.once('error', reject);
+    req.once('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout during port check'));
+    });
+    req.end();
+  });
+  const url = `${protocol}://${host}:${port}`;
+  console.log(`Connecting to PXE on: ${url}`);
+  const client = createPXEClient(url);
+  await waitForPXE(client);
+  console.log(`Connected to PXE: ${url}`);
+  return client;
 }

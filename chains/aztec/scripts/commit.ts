@@ -1,10 +1,5 @@
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
-import {
-  AztecAddress,
-  Contract,
-  createPXEClient,
-  waitForPXE,
-} from '@aztec/aztec.js';
+import { AztecAddress, Contract } from '@aztec/aztec.js';
 import { TrainContract } from './Train.ts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
 import {
@@ -14,15 +9,13 @@ import {
   publicLogs,
   simulateBlockPassing,
   getHTLCDetails,
+  connectPXE,
 } from './utils.ts';
 
 const TrainContractArtifact = TrainContract.artifact;
-const { PXE_URL = 'http://localhost:8080' } = process.env;
 
 async function main(): Promise<void> {
-  console.log(`Connecting to PXE at ${PXE_URL}...`);
-  const pxe = createPXEClient(PXE_URL);
-  await waitForPXE(pxe);
+  const pxe = await connectPXE(8080);
 
   const [senderWallet, recipientWallet, minter]: any[] =
     await getInitialTestAccountsWallets(pxe);
@@ -31,11 +24,11 @@ async function main(): Promise<void> {
 
   const data = readData();
   const Id = generateId();
-  const src_receiver = data.src_receiver;
+  const wallet1 = data.wallet1;
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const timelock = now + 2000n;
+  const timelock = now + 1500n;
   const token = data.token;
-  const amount = 3n;
+  const amount = 23n;
   const dst_chain = 'TON'.padEnd(8, ' ');
   const dst_asset = 'Toncoin'.padEnd(8, ' ');
   const dst_address = 'TONAddress'.padEnd(48, ' ');
@@ -64,16 +57,19 @@ async function main(): Promise<void> {
       .balance_of_private(senderWallet.getAddress())
       .simulate(),
   );
-
   const contract = await Contract.at(
     AztecAddress.fromString(data.train),
     TrainContractArtifact,
     senderWallet,
   );
+  const is_contract_initialized = await contract.methods
+    .is_contract_initialized(Id)
+    .simulate();
+  if (is_contract_initialized) throw new Error('HTLC Exsists');
   const commitTx = await contract.methods
     .commit_private_user(
       Id,
-      AztecAddress.fromString(src_receiver),
+      AztecAddress.fromString(wallet1),
       timelock,
       AztecAddress.fromString(token),
       amount,

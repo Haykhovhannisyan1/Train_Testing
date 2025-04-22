@@ -1,39 +1,44 @@
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
-import { createPXEClient, waitForPXE, deriveKeys, Fr } from '@aztec/aztec.js';
+import { DeployOptions, deriveKeys, Fr, Wallet } from '@aztec/aztec.js';
 import { TrainContract } from './Train.ts';
-import { updateData } from './utils.ts';
-
-const { PXE_URL = 'http://localhost:8080' } = process.env;
+import { connectPXE, updateData } from './utils.ts';
 
 async function main(): Promise<void> {
-  console.log(`Connecting to PXE at ${PXE_URL}...`);
-  const pxe = createPXEClient(PXE_URL);
-  await waitForPXE(pxe);
+  const pxe = await connectPXE(8080);
+  const wallets = await getInitialTestAccountsWallets(pxe);
 
-  const [deployerWallet, src_receiver] =
-    await getInitialTestAccountsWallets(pxe);
-  const deployer = deployerWallet.getAddress();
-  console.log(`Using wallet: ${deployer}`);
-
-  console.log('Deploying TRAIN Protocol contract...');
   const trainSecretKey = Fr.random();
   const { publicKeys: trainPublicKeys } = await deriveKeys(trainSecretKey);
   const trainDeployment = TrainContract.deployWithPublicKeys(
     trainPublicKeys,
-    deployerWallet,
+    wallets[0] as unknown as Wallet,
   );
-  const trainContract = await trainDeployment.send().deployed();
-  console.log(`TRAIN Protcol contract deployed at ${trainContract.address}`);
+
+  const deploymentOptions: DeployOptions = {
+    contractAddressSalt: Fr.random(),
+    universalDeploy: false,
+    skipClassRegistration: false,
+    skipPublicDeployment: false,
+    skipInitialization: false,
+  };
+  const trainContract = await trainDeployment
+    .send(deploymentOptions)
+    .deployed();
+  const trainPartialAddress = await trainContract.partialAddress;
+  console.log(`✅ TRAIN Protcol contract deployed at ${trainContract.address}`);
+  pxe.registerAccount(trainSecretKey, trainPartialAddress);
   updateData({
     trainSecretKey: trainSecretKey,
     trainPublicKeys: trainPublicKeys,
+    trainPartialAddress: trainPartialAddress,
     train: trainContract.address,
-    deployer: deployer.toString(),
-    src_receiver: src_receiver.getAddress().toString(),
+    trainInitHash: trainContract.instance.initializationHash,
+    wallet0: wallets[0].getAddress(),
+    wallet1: wallets[1].getAddress(),
   });
 }
 
 main().catch((err: Error) => {
-  console.error(`Error: ${err}`);
+  console.error(`❌ Error: ${err}`);
   process.exit(1);
 });
