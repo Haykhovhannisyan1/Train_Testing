@@ -1,16 +1,19 @@
 mod lib;
+mod types;
 use dep::aztec::macros::aztec;
 
 #[aztec]
 pub contract Train {
     use crate::lib::{bytes_to_u128_limbs, u128_limbs_to_bytes};
+    use crate::types::events::{
+        TokenCommitted, TokenLockAdded, TokenLocked, TokenRedeemed, TokenRefunded,
+    };
     use dep::aztec::messages::logs::note::encode_and_encrypt_note;
     use dep::aztec::protocol_types::traits::{Packable, Serialize};
     use dep::aztec::state_vars::{private_immutable::PrivateImmutable, SharedMutable};
     use dep::sha256;
     use dep::token::Token;
     use aztec::macros::{
-        events::event,
         functions::{initializer, internal, private, public, utility, view},
         notes::note,
         storage::storage,
@@ -37,55 +40,6 @@ pub contract Train {
         claimed: u8,
     }
 
-    // TODO: Figure out how to emit all required data while staying within the public log size limit.
-    #[derive(Serialize)]
-    #[event]
-    struct TokenCommitted {
-        Id: Field,
-        amount: u128,
-        token: AztecAddress,
-        timelock: u64,
-        // dst_chain: str<8>,
-        // dst_asset: str<8>,
-        // dst_address: str<48>,
-        src_receiver: AztecAddress,
-    }
-
-    #[derive(Serialize)]
-    #[event]
-    struct TokenLockAdded {
-        Id: Field,
-        // hashlock: [u8; 32],
-        timelock: u64,
-    }
-
-    #[derive(Serialize)]
-    #[event]
-    struct TokenRefunded {
-        Id: Field,
-    }
-
-    #[derive(Serialize)]
-    #[event]
-    struct TokenLocked {
-        Id: Field,
-        // hashlock: [u8; 32],
-        amount: u128,
-        token: AztecAddress,
-        timelock: u64,
-        // dst_chain: str<8>,
-        // dst_asset: str<8>,
-        // dst_address: str<48>,
-    }
-
-    #[derive(Serialize)]
-    #[event]
-    struct TokenRedeemed {
-        Id: Field,
-        // hashlock: [u8; 32],
-        // secret: [u8; 32],
-    }
-
     #[public]
     #[initializer]
     fn constructor() {}
@@ -93,7 +47,7 @@ pub contract Train {
     #[storage]
     struct Storage<Context> {
         contracts_private: Map<Field, PrivateImmutable<HTLC_Private, Context>, Context>,
-        contracts_public: Map<Field, SharedMutable<HTLC_Public, 3, Context>, Context>, // later block delay number can be changed to smth reasonable
+        contracts_public: Map<Field, SharedMutable<HTLC_Public, 3, Context>, Context>,
     }
 
     #[private]
@@ -166,12 +120,12 @@ pub contract Train {
             amount: amount,
             token: token,
             timelock: timelock,
-            // dst_chain: dst_chain,
-            // dst_asset: dst_asset,
-            // dst_address: dst_address,
+            dst_chain: dst_chain,
+            dst_asset: dst_asset,
+            dst_address: dst_address,
             src_receiver: src_receiver,
         };
-        context.emit_public_log(log_msg);
+        context.emit_public_log(log_msg.pack());
     }
 
     #[private]
@@ -208,9 +162,8 @@ pub contract Train {
             claimed: htlc_public.claimed,
         };
         storage.contracts_public.at(Id).schedule_value_change(modified_htlc_public);
-        // let log_msg = TokenLockAdded { Id, hashlock, timelock };
-        let log_msg = TokenLockAdded { Id, timelock };
-        context.emit_public_log(log_msg);
+        let log_msg = TokenLockAdded { Id, hashlock, timelock };
+        context.emit_public_log(log_msg.pack());
     }
 
     #[private]
@@ -221,12 +174,9 @@ pub contract Train {
         let htlc_private = storage.contracts_private.at(Id).get_note();
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
 
-        // Token::at(htlc_public.token)
-        //     .transfer_in_private(context.this_address(), htlc_private.owner, htlc_public.amount, 0)
-        //     .call(&mut context);
-        Token::at(htlc_public.token).transfer(htlc_private.owner, htlc_public.amount).call(
-            &mut context,
-        );
+        Token::at(htlc_public.token)
+            .transfer_in_private(context.this_address(), htlc_private.owner, htlc_public.amount, 0)
+            .call(&mut context);
     }
 
     #[public]
@@ -320,16 +270,16 @@ pub contract Train {
 
         let log_msg = TokenLocked {
             Id: Id,
-            // hashlock: hashlock,
+            hashlock: hashlock,
             amount: amount,
             token: token,
             timelock: timelock,
-            // dst_chain: dst_chain,
-            // dst_asset: dst_asset,
-            // dst_address: dst_address,
+            dst_chain: dst_chain,
+            dst_asset: dst_asset,
+            dst_address: dst_address,
         };
 
-        context.emit_public_log(log_msg);
+        context.emit_public_log(log_msg.pack());
     }
 
     #[private]
@@ -340,28 +290,22 @@ pub contract Train {
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
 
         if htlc_public.src_receiver == AztecAddress::zero() {
-            // Token::at(htlc_public.token)
-            //     .transfer_in_private(
-            //         context.this_address(),
-            //         context.msg_sender(),
-            //         htlc_public.amount,
-            //         0 as Field,
-            //     )
-            //     .call(&mut context);
-            Token::at(htlc_public.token).transfer(context.msg_sender(), htlc_public.amount).call(
-                &mut context,
-            );
-        } else {
-            // Token::at(htlc_public.token)
-            //     .transfer_in_private(
-            //         context.this_address(),
-            //         htlc_public.src_receiver,
-            //         htlc_public.amount,
-            //         0 as Field,
-            //     )
-            //     .call(&mut context);
             Token::at(htlc_public.token)
-                .transfer(htlc_public.src_receiver, htlc_public.amount)
+                .transfer_in_private(
+                    context.this_address(),
+                    context.msg_sender(),
+                    htlc_public.amount,
+                    0 as Field,
+                )
+                .call(&mut context);
+        } else {
+            Token::at(htlc_public.token)
+                .transfer_in_private(
+                    context.this_address(),
+                    htlc_public.src_receiver,
+                    htlc_public.amount,
+                    0 as Field,
+                )
                 .call(&mut context);
         }
     }
@@ -394,11 +338,11 @@ pub contract Train {
 
         let log_msg = TokenRedeemed {
             Id: Id,
-            // hashlock: u128_limbs_to_bytes(htlc_public.hashlock_high, htlc_public.hashlock_low),
-            // secret: secret,
+            hashlock: u128_limbs_to_bytes(htlc_public.hashlock_high, htlc_public.hashlock_low),
+            secret: secret,
         };
 
-        context.emit_public_log(log_msg);
+        context.emit_public_log(log_msg.pack());
     }
 
     // This utility function should be invoked by the frontend before each function call

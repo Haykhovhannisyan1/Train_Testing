@@ -6,3 +6,4 @@ contracts/token/target/*
 
 scripts/node_modules/
 scripts/data.json
+scripts/package-lock.json
