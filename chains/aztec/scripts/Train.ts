@@ -45,8 +45,6 @@ export const TrainContractArtifact = loadContractArtifact(TrainContractArtifactJ
 
       export type TokenRedeemed = {
         Id: FieldLike
-hashlock: (bigint | number)[]
-secret: (bigint | number)[]
       }
     
 
@@ -235,36 +233,12 @@ TokenRedeemed: {
             "type": {
                 "kind": "field"
             }
-        },
-        {
-            "name": "hashlock",
-            "type": {
-                "kind": "array",
-                "length": 32,
-                "type": {
-                    "kind": "integer",
-                    "sign": "unsigned",
-                    "width": 8
-                }
-            }
-        },
-        {
-            "name": "secret",
-            "type": {
-                "kind": "array",
-                "length": 32,
-                "type": {
-                    "kind": "integer",
-                    "sign": "unsigned",
-                    "width": 8
-                }
-            }
         }
     ],
     "path": "Train::TokenRedeemed"
 },
-        eventSelector: EventSelector.fromString("0xd27690e2"),
-        fieldNames: ["Id","hashlock","secret"],
+        eventSelector: EventSelector.fromString("0xf004489b"),
+        fieldNames: ["Id"],
       },
 TokenLocked: {
         abiType: {
