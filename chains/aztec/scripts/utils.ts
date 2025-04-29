@@ -2,7 +2,13 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
-import { createPXEClient, PXE, waitForPXE } from '@aztec/aztec.js';
+import {
+  AztecNode,
+  createAztecNodeClient,
+  createPXEClient,
+  PXE,
+  waitForPXE,
+} from '@aztec/aztec.js';
 
 const DEFAULT_HOST = 'localhost';
 
@@ -158,4 +164,14 @@ export async function connectPXE(
   await waitForPXE(client);
   console.log(`Connected to PXE: ${url}`);
   return client;
+}
+
+/**
+ * Returns a connected AztecNode client.
+ * Uses PXE_URL from env or falls back to default.
+ */
+export async function getAztecNode(): Promise<AztecNode> {
+  const DEFAULT_PXE_URL = 'http://localhost:8080';
+  const url = process.env.PXE_URL ?? DEFAULT_PXE_URL;
+  return createAztecNodeClient(url);
 }

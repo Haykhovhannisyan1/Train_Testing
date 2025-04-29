@@ -11,11 +11,14 @@ import {
   getHTLCDetails,
   connectPXE,
 } from './utils.ts';
+import { CheatCodes } from '@aztec/aztec.js/testing';
 
 const TrainContractArtifact = TrainContract.artifact;
+const ethRpcUrl = 'http://localhost:8545';
 
 async function main(): Promise<void> {
   const pxe = await connectPXE(8080);
+  const cc = await CheatCodes.create([ethRpcUrl], pxe);
 
   const [senderWallet, recipientWallet, minter]: any[] =
     await getInitialTestAccountsWallets(pxe);
@@ -25,8 +28,10 @@ async function main(): Promise<void> {
   const data = readData();
   const Id = generateId();
   const wallet1 = data.wallet1;
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  const timelock = now + 1500n;
+  // const now = BigInt(Math.floor(Date.now() / 1000));
+  const now  = await cc.eth.timestamp();
+  // await cc.eth.warp(now);
+  const timelock = now + 901;
   const token = data.token;
   const amount = 23n;
   const dst_chain = 'TON'.padEnd(8, ' ');

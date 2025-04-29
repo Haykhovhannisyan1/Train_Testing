@@ -15,17 +15,15 @@ import {
   publicLogs,
   getHTLCDetails,
   simulateBlockPassing,
+  connectPXE,
 } from './utils.ts';
 import { CheatCodes } from '@aztec/aztec.js/testing';
 
 const TrainContractArtifact = TrainContract.artifact;
-const { PXE_URL = 'http://localhost:8080' } = process.env;
 const ethRpcUrl = 'http://localhost:8545';
 
 async function main(): Promise<void> {
-  console.log(`Connecting to PXE at ${PXE_URL}...`);
-  const pxe = createPXEClient(PXE_URL);
-  await waitForPXE(pxe);
+  const pxe = await connectPXE(8080);
   const cc = await CheatCodes.create([ethRpcUrl], pxe);
 
   const [solverWallet, recipientWallet]: any[] =
@@ -39,10 +37,9 @@ async function main(): Promise<void> {
   const hashlock = pair[1];
   const amount = 7n;
   // const now = BigInt(Math.floor(Date.now() / 1000));
-  const now = await cc.aztec.timestamp();
-  console.log('now: ', now);
-  const timelock = now + 3000;
-  console.log('timelock: ', timelock);
+  const now = await cc.eth.timestamp();
+  // await cc.eth.warp(now);
+  const timelock = now + 2701;
   const token: string = data.token;
   const randomness = generateId();
   const dst_chain = 'TON'.padEnd(8, ' ');
