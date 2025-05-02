@@ -232,7 +232,7 @@ describe("HTLC", () => {
     messageLength.writeUInt16LE(MSG.length, 0);
 
     // Construct preamble
-    const finalMessage = Buffer.concat([
+    const rawMessage = Buffer.concat([
       signingDomain,
       headerVersion,
       applicationDomain,
@@ -242,6 +242,8 @@ describe("HTLC", () => {
       messageLength,
       MSG,
     ]);
+    const hexString = rawMessage.toString('hex');
+    const finalMessage = new TextEncoder().encode(hexString);
 
     let wallet_payer = wallet.payer;
     let sk = wallet_payer.secretKey;

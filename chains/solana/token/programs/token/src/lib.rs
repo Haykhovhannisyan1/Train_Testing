@@ -436,15 +436,18 @@ pub mod anchor_htlc {
         let signer_count = [1u8]; // One signer
         let message_length = (hash.len() as u16).to_le_bytes();
 
-        let mut full_message = Vec::new();
-        full_message.extend_from_slice(signing_domain);
-        full_message.extend_from_slice(&header_version);
-        full_message.extend_from_slice(&application_domain);
-        full_message.extend_from_slice(&message_format);
-        full_message.extend_from_slice(&signer_count);
-        full_message.extend_from_slice(&signer);
-        full_message.extend_from_slice(&message_length);
-        full_message.extend_from_slice(&hash);
+        let mut raw_message = Vec::new();
+        raw_message.extend_from_slice(signing_domain);
+        raw_message.extend_from_slice(&header_version);
+        raw_message.extend_from_slice(&application_domain);
+        raw_message.extend_from_slice(&message_format);
+        raw_message.extend_from_slice(&signer_count);
+        raw_message.extend_from_slice(&signer);
+        raw_message.extend_from_slice(&message_length);
+        raw_message.extend_from_slice(&hash);
+
+        let hex_message = hex::encode(raw_message);
+        let full_message = hex_message.into_bytes();
 
         // Check that ix is what we expect to have been sent
         if ix.program_id!= ED25519_ID ||  // The program id we expect
