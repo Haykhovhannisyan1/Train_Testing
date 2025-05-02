@@ -31,6 +31,9 @@
     "pre-build": "eslint './src/**/*.{ts, js, json}' && prettier --write src"
   },
   "peerDependencies": {
-    "web3": "^1.8.1"
+    "web3": "^4.16.0"
+  },
+  "dependencies": {
+    "@mempool/mempool.js": "3.0.0"
   }
 }

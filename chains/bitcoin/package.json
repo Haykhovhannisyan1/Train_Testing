@@ -34,7 +34,7 @@
     "pre-build": "eslint './src/**/*.{ts, js, json}' && prettier --write src"
   },
   "peerDependencies": {
-    "@mempool/mempool.js": "^2.3.0",
+    "@mempool/mempool.js": "^3.0.0",
     "bip65": "^1.0.3",
     "bitcoinjs-lib": "^6.1.0",
     "ecpair": "^2.1.0",

@@ -1,32 +1,10 @@
 require('dotenv').config();
+require('@nomicfoundation/hardhat-toolbox');
 
-const isZKsyncNetwork = process.env.HARDHAT_NETWORK?.toLowerCase().includes('zksync');
-
-if (isZKsyncNetwork) {
-  require('@matterlabs/hardhat-zksync');
-  require('@matterlabs/hardhat-zksync-verify');
-  require('@matterlabs/hardhat-zksync-solc');
-  require('@matterlabs/hardhat-zksync-deploy');
-} else {
-  require('@nomicfoundation/hardhat-toolbox');
-  require('@openzeppelin/hardhat-upgrades');
-  require('@nomicfoundation/hardhat-ignition');
-}
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  ignition: {
-    strategyConfig: {
-      create2: {
-        salt: '0x0000000000000000000000000000000000000000000000000000000000011111',
-      },
-    },
-  },
   solidity: {
     version: '0.8.23',
-    zksolc: {
-      version: '1.5.11',
-      settings: {},
-    },
     settings: {
       optimizer: {
         enabled: true,
@@ -35,7 +13,13 @@ module.exports = {
       viaIR: true,
     },
   },
+
   networks: {
+    linea_mainnet: {
+      url: process.env.lineaRPC,
+      accounts: [process.env.mainnet],
+      chainId: 59144,
+    },
     ZKsyncEraSepolia: {
       url: 'https://sepolia.era.zksync.dev',
       ethNetwork: 'sepolia',
@@ -71,22 +55,27 @@ module.exports = {
     mantleSepolia: {
       url: 'https://endpoints.omniatech.io/v1/mantle/sepolia/public',
       accounts: [process.env.PRIV_KEY],
+      chainId: 5003,
     },
     berachain: {
       url: 'https://bartio.rpc.berachain.com/',
       accounts: [process.env.PRIV_KEY],
+      chainId: 80084,
     },
     kakarot_sepolia: {
-      url: 'https://sepolia-rpc.kakarot.org',
+      url: 'https://sepolia.kakarot.org',
       accounts: [process.env.PRIV_KEY],
+      chainId: 920637907288165,
     },
     unichainSepolia: {
       url: 'https://sepolia.unichain.org',
       accounts: [process.env.PRIV_KEY],
+      chainId: 1301,
     },
     arbitrumSepolia: {
       url: 'https://arbitrum-sepolia.infura.io/v3/2d3e18b5f66f40df8d5df3d990d6d941',
       accounts: [process.env.PRIV_KEY],
+      chainId: 421614,
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/775081a490784e709d3457ed0e413b21`,
@@ -103,7 +92,7 @@ module.exports = {
       chainId: 11155420,
     },
     taikoHekla: {
-      url: 'https://rpc.hekla.taiko.xyz.',
+      url: 'https://rpc.hekla.taiko.xyz',
       accounts: [process.env.PRIV_KEY],
       chainId: 167009,
     },
@@ -115,13 +104,14 @@ module.exports = {
     minato: {
       url: 'https://rpc.minato.soneium.org/',
       accounts: [process.env.PRIV_KEY],
+      chainId: 1946,
     },
     hardhat: {
       zksync: true,
     },
   },
+
   etherscan: {
-    enabled: true,
     apiKey: {
       berachain: process.env.berachain,
       unichainSepolia: process.env.unichainSepolia,
@@ -140,8 +130,17 @@ module.exports = {
       base: process.env.baseAPIKey,
       zkSyncEraSepolia: process.env.zk_sync,
       zkSyncEraMainnet: process.env.zk_sync,
+      linea_mainnet: process.env.linea_mainnet,
     },
     customChains: [
+      {
+        network: 'linea_mainnet',
+        chainId: 59144,
+        urls: {
+          apiURL: 'https://api.lineascan.build/api',
+          browserURL: 'https://lineascan.build/',
+        },
+      },
       {
         network: 'zkSyncEraMainnet',
         chainId: 324,
@@ -180,7 +179,7 @@ module.exports = {
         chainId: 1301,
         urls: {
           apiURL: 'https://sepolia.uniscan.xyz/api',
-          browserURL: '	https://sepolia.uniscan.xyz/',
+          browserURL: 'https://sepolia.uniscan.xyz/',
         },
       },
       {
@@ -241,7 +240,8 @@ module.exports = {
       },
     ],
   },
+
   sourcify: {
-    enabled: false,
+    enabled: true,
   },
 };
