@@ -11,10 +11,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aztec/accounts": "^0.85.0",
-    "@aztec/aztec.js": "^0.85.0",
-    "@aztec/noir-contracts.js": "^0.85.0",
-    "@aztec/pxe": "^0.85.0"
+    "@aztec/accounts": "^0.85.0-alpha-testnet.3",
+    "@aztec/aztec.js": "^0.85.0-alpha-testnet.3",
+    "@aztec/noir-contracts.js": "^0.85.0-alpha-testnet.3",
+    "@aztec/pxe": "^0.85.0-alpha-testnet.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

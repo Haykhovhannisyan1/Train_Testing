@@ -86,7 +86,7 @@ pub contract Train {
         ));
 
         Token::at(token)
-            .transfer_in_private(context.msg_sender(), context.this_address(), amount, randomness)
+            .transfer_to_public(context.msg_sender(), context.this_address(), amount, randomness)
             .call(&mut context);
     }
 
@@ -175,7 +175,7 @@ pub contract Train {
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
 
         Token::at(htlc_public.token)
-            .transfer_in_private(context.this_address(), htlc_private.owner, htlc_public.amount, 0)
+            .transfer_to_private(htlc_private.owner, htlc_public.amount)
             .call(&mut context);
     }
 
@@ -237,7 +237,7 @@ pub contract Train {
         ));
 
         Token::at(token)
-            .transfer_in_private(context.msg_sender(), context.this_address(), amount, randomness)
+            .transfer_to_public(context.msg_sender(), context.this_address(), amount, randomness)
             .call(&mut context);
     }
 
@@ -291,21 +291,11 @@ pub contract Train {
 
         if htlc_public.src_receiver == AztecAddress::zero() {
             Token::at(htlc_public.token)
-                .transfer_in_private(
-                    context.this_address(),
-                    context.msg_sender(),
-                    htlc_public.amount,
-                    0 as Field,
-                )
+                .transfer_to_private(context.msg_sender(), htlc_public.amount)
                 .call(&mut context);
         } else {
             Token::at(htlc_public.token)
-                .transfer_in_private(
-                    context.this_address(),
-                    htlc_public.src_receiver,
-                    htlc_public.amount,
-                    0 as Field,
-                )
+                .transfer_to_private(htlc_public.src_receiver, htlc_public.amount)
                 .call(&mut context);
         }
     }
