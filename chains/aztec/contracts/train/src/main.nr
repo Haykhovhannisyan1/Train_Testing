@@ -208,6 +208,7 @@ pub contract Train {
         hashlock: [u8; 32],
         amount: u128,
         timelock: u64,
+        src_receiver: [u8; 32],
         token: AztecAddress,
         randomness: Field,
         dst_chain: str<8>,

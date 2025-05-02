@@ -61,6 +61,10 @@ async function main(): Promise<void> {
     TokenContractArtifact,
     senderWallet,
   );
+  console.log(
+    'Public balance of Train: ',
+    await asset.methods.balance_of_public(data.train).simulate(),
+  );
   const assetMinter = await TokenContract.at(data.token, wallet2);
   await simulateBlockPassing(pxe, assetMinter, wallet3, 3);
   getHTLCDetails(contract, Id);

@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
   const transfer = asset
     .withWallet(solverWallet.getAddress())
-    .methods.transfer_in_private(
+    .methods.transfer_to_public(
       solverWallet.getAddress(),
       AztecAddress.fromString(data.train),
       amount,
@@ -72,6 +72,10 @@ async function main(): Promise<void> {
     .balance_of_private(solverWallet.getAddress())
     .simulate();
   console.log('private balance of solver: ', privateBalanceBefore);
+  console.log(
+    'public balance of Train: ',
+    await asset.methods.balance_of_public(data.train).simulate(),
+  );
 
   const contract = await Contract.at(
     data.train,
@@ -102,7 +106,10 @@ async function main(): Promise<void> {
     .balance_of_private(solverWallet.getAddress())
     .simulate();
   console.log('private balance of solver: ', privateBalanceAfter);
-
+  console.log(
+    'public balance of Train: ',
+    await asset.methods.balance_of_public(data.train).simulate(),
+  );
   publicLogs(pxe);
 
   updateData({

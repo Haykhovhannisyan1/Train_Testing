@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   const contract = await Contract.at(
     AztecAddress.fromString(data.train),
     TrainContractArtifact,
-    wallet1,
+    wallet3,
   );
 
   console.log(
@@ -42,9 +42,9 @@ async function main(): Promise<void> {
     await asset.methods.balance_of_private(wallet1.getAddress()).simulate(),
   );
   console.log(
-    'contract private: ',
+    'contract public: ',
     await asset.methods
-      .balance_of_private(AztecAddress.fromString(data.train))
+      .balance_of_public(AztecAddress.fromString(data.train))
       .simulate(),
   );
   const is_contract_initialized = await contract.methods
@@ -64,9 +64,9 @@ async function main(): Promise<void> {
     await asset.methods.balance_of_private(wallet1.getAddress()).simulate(),
   );
   console.log(
-    'contract private: ',
+    'contract public: ',
     await asset.methods
-      .balance_of_private(AztecAddress.fromString(data.train))
+      .balance_of_public(AztecAddress.fromString(data.train))
       .simulate(),
   );
   const assetMinter = await TokenContract.at(data.token, wallet2);

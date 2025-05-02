@@ -170,8 +170,17 @@ export async function connectPXE(
  * Returns a connected AztecNode client.
  * Uses PXE_URL from env or falls back to default.
  */
-export async function getAztecNode(): Promise<AztecNode> {
+export async function getAztecNode(o?: string | number): Promise<AztecNode> {
   const DEFAULT_PXE_URL = 'http://localhost:8080';
-  const url = process.env.PXE_URL ?? DEFAULT_PXE_URL;
+  const s = String(o ?? ''),
+    base = process.env.PXE_URL ?? DEFAULT_PXE_URL;
+  const url =
+    o == null
+      ? base
+      : /^\d+$/.test(s)
+        ? `http://localhost:${s}`
+        : /^https?:\/\//.test(s)
+          ? s
+          : `http://${s}`;
   return createAztecNodeClient(url);
 }

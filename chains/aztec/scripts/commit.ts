@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   const Id = generateId();
   const wallet1 = data.wallet1;
   // const now = BigInt(Math.floor(Date.now() / 1000));
-  const now  = await cc.eth.timestamp();
+  const now = await cc.eth.timestamp();
   // await cc.eth.warp(now);
   const timelock = now + 901;
   const token = data.token;
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 
   const transfer = asset
     .withWallet(senderWallet.getAddress())
-    .methods.transfer_in_private(
+    .methods.transfer_to_public(
       senderWallet.getAddress(),
       AztecAddress.fromString(data.train),
       amount,
@@ -85,6 +85,9 @@ async function main(): Promise<void> {
     )
     .send({ authWitnesses: [witness] })
     .wait();
+
+  const txEffect = await pxe.getTxEffect(commitTx.txHash);
+  console.log('TxEffect: ', txEffect.data.privateLogs);
 
   console.log('tx : ', commitTx);
   console.log(

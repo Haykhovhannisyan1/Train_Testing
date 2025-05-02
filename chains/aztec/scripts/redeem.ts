@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     wallet3.getCompleteAddress().partialAddress,
   );
 
-  const node = await getAztecNode();
+  const node = await getAztecNode(8080);
   const trainInstance = await node.getContract(
     AztecAddress.fromString(data.train),
   );
@@ -87,9 +87,9 @@ async function main(): Promise<void> {
     await asset.methods.balance_of_private(wallet2.getAddress()).simulate(),
   );
   console.log(
-    'contract private: ',
+    'contract public: ',
     await asset.methods
-      .balance_of_private(AztecAddress.fromString(data.train))
+      .balance_of_public(train.address)
       .simulate(),
   );
   // // console.log(
@@ -117,30 +117,30 @@ async function main(): Promise<void> {
     .wait();
 
   console.log('tx : ', redeemTx);
-  // console.log(
-  //   'private balance of src_receiver: ',
-  //   await asset.methods.balance_of_private(wallet2.getAddress()).simulate(),
-  // );
-  // console.log(
-  //   'contract private: ',
-  //   await asset.methods
-  //     .balance_of_private(AztecAddress.fromString(data.train))
-  //     .simulate(),
-  // );
+  console.log(
+    'private balance of src_receiver: ',
+    await asset.methods.balance_of_private(wallet2.getAddress()).simulate(),
+  );
+  console.log(
+    'contract public: ',
+    await asset.methods
+      .balance_of_public(AztecAddress.fromString(data.train))
+      .simulate(),
+  );
   // console.log(
   //   'contract public: ',
   //   await asset.methods
   //     .balance_of_public(AztecAddress.fromString(data.train))
   //     .simulate(),
   // );
-  // await publicLogs(pxe);
-  // await simulateBlockPassing(pxe, asset, wallet3, 3);
-  // const contract = await Contract.at(
-  //   AztecAddress.fromString(data.train),
-  //   TrainContractArtifact,
-  //   wallet2 as unknown as Wallet,
-  // );
-  // await getHTLCDetails(contract, Id);
+  await publicLogs(pxe);
+  await simulateBlockPassing(pxe, asset, wallet3, 3);
+  const contract = await Contract.at(
+    AztecAddress.fromString(data.train),
+    TrainContractArtifact,
+    wallet2 as unknown as Wallet,
+  );
+  await getHTLCDetails(contract, Id);
 }
 
 main().catch((err: any) => {
