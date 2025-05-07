@@ -15,13 +15,12 @@ This part of the repository contains a cairo1.0 smart contract for implementing 
 
 #### Functions
 
-- **commit**: Allows a sender to create a new PHTLC for EREC20 tokens by specifying the receiver, messenger, timelock, token contract, and amount.
+- **commit**: Allows a sender to create a new PreHTLC for EREC20 tokens by specifying the receiver, messenger, timelock, token contract, and amount.
 - **lock**: Allows a sender to create a new HTLC for EREC20 tokens by specifying the receiver, hashlock, timelock, token contract, and amount.
 - **redeem**: Allows the receiver to claim the EREC20 tokens locked in the HTLC by providing the secret hash.
-- **lockCommit**: Allows the messenger to lock the commited funds by the given hashlock.
+- **addLock**: Allows the messenger to lock the commited funds by the given hashlock.
 - **unlock**: Allows the sender to unlock the EREC20 tokens if the timelock expires and the receiver has not redeemed the funds.
-- **uncommit**: Allows the sender to uncommit the EREC20 tokens if the timelock expires and the messenger has not locked the funds.
-- **getLockDetails/getCommitDetails**: Retrieves details of a specific HTLC/PHTLC by its contract ID.
+- **getDetails**: Retrieves details of a specific HTLC/PreHTLC by its contract ID.
 
 
 
@@ -76,6 +75,25 @@ This part of the repository contains a cairo1.0 smart contract for implementing 
 
     ```bash
     starkli deploy <YOUR_CLASS_HASH>
+
+## Tests
+
+There are 12 test types for the HTLC contract which are written in the tests folder.
+The 12 tests types are 
+    ```bash
+    0. Tests with not existing HTLCs (Can't call any of the functions if the HTLC with that Id does not exist).
+    1. Tests for redeeming HTLC (Can redeem with correct secret, and can't redeem with wrong secret).
+    2. Tests for already redeemed HTLCs (Can't call any of the functions if the HTLC with that Id is already redeemed).
+    3. Tests for refunding HTLC (Can refund if the timelock passed, and can't refund if timelock did not pass yet).
+    4. Tests for already refunded HTLCs (Can't call any of the functions if the HTLC with that Id is already refunded).
+    5. Tests for already created (Pre)HTLCs (Can't create Pre(HTLC)s with already existing Id).
+    6. Tests for not positive amount (Pre)HTLCs (Can't create Pre(HTLC) with not positive amount).
+    7. Tests for (Pre)HTLCs without enough balance (Can't create Pre(HTLC) without enough balance).
+    8. Tests for (Pre)HTLCs without enough allowance (Can't create Pre(HTLC) without enough allowance).
+    9. Tests for (Pre)HTLCs with wrong timelocks (Can't create Pre(HTLC) with wrong timelock).
+    10. Tests for HTLCs with wrong reward timelocks (Can't create HTLC with not future reward timelock, or with bigger reward timelock).
+    11. Tests for add Lock function (Sender can add lock to PreHTLC, other users can't add lock to PreHTLC, can't add lock if hashlock is already set, and can't add lock with wrong timelock).
+    12. Tests for add Lock signature function (Can add lock with correct signature, can't add lock signature if hashlock is already set, can't add lock with wrong data, and can't add lock signed by other user).
 
 Usage
 Once deployed, users can interact with the contracts using Starknet wallets or through contract function calls programmatically.
