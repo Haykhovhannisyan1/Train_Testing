@@ -310,12 +310,37 @@ pub contract Train {
     #[private]
     fn redeem_private(Id: Field, secret: [u8; 32], ownership_key: [u8; 32], randomness: Field) {
         // Safety: The contract intentionally exposes these parameters as public.
-        Train::at(context.this_address()).redeem_public(Id, secret).enqueue(&mut context);
+        Train::at(context.this_address()).redeem_public(Id, secret, ownership_key).enqueue(
+            &mut context,
+        );
 
         let htlc_public = storage.contracts_public.at(Id).get_current_value();
-
         if (htlc_public.ownership_hash_high == 0 as u128) {
             if htlc_public.ownership_hash_low == 0 as u128 {
+                Token::at(htlc_public.token)
+                    .transfer_to_private(htlc_public.src_receiver, htlc_public.amount)
+                    .call(&mut context);
+            }
+        } else {
+            Token::at(htlc_public.token)
+                .transfer_to_private(context.msg_sender(), htlc_public.amount)
+                .call(&mut context);
+        }
+    }
+
+    #[public]
+    #[internal]
+    fn redeem_public(Id: Field, secret: [u8; 32], ownership_key: [u8; 32]) {
+        let mut htlc_public = storage.contracts_public.at(Id).get_current_value();
+        assert(htlc_public.amount > 0, "HTLCNotExists"); // If it doesn't exist, all parameters will default to zero values.
+        let hashed_secret = sha256::sha256_var(secret, secret.len() as u64);
+        let hashed_secret_tuple = bytes_to_u128_limbs(hashed_secret);
+        assert(htlc_public.hashlock_high == hashed_secret_tuple.0, "HashlockNotMatch");
+        assert(htlc_public.hashlock_low == hashed_secret_tuple.1, "HashlockNotMatch");
+        assert(htlc_public.claimed == 1, "AlreadyClaimed");
+
+        if (htlc_public.ownership_hash_high != 0 as u128) {
+            if htlc_public.ownership_hash_low != 0 as u128 {
                 let ownership_key_hashed =
                     sha256::sha256_var(ownership_key, ownership_key.len() as u64);
                 let ownership_key_tuple = bytes_to_u128_limbs(ownership_key_hashed);
@@ -324,21 +349,6 @@ pub contract Train {
             }
         }
 
-        Token::at(htlc_public.token)
-            .transfer_to_private(context.msg_sender(), htlc_public.amount)
-            .call(&mut context);
-    }
-
-    #[public]
-    #[internal]
-    fn redeem_public(Id: Field, secret: [u8; 32]) {
-        let mut htlc_public = storage.contracts_public.at(Id).get_current_value();
-        assert(htlc_public.amount > 0, "HTLCNotExists"); // If it doesn't exist, all parameters will default to zero values.
-        let hashed_secret = sha256::sha256_var(secret, secret.len() as u64);
-        let hashed_secret_tuple = bytes_to_u128_limbs(hashed_secret);
-        assert(htlc_public.hashlock_high == hashed_secret_tuple.0, "HashlockNotMatch");
-        assert(htlc_public.hashlock_low == hashed_secret_tuple.1, "HashlockNotMatch");
-        assert(htlc_public.claimed == 1, "AlreadyClaimed");
         let secret_limbs = bytes_to_u128_limbs(secret);
 
         let modified_htlc_public = HTLC_Public {
@@ -375,7 +385,7 @@ pub contract Train {
 
     #[view]
     #[public]
-    fn get_htlc_public_solver(key: Field) -> pub HTLC_Public {
+    fn get_htlc_public(key: Field) -> pub HTLC_Public {
         storage.contracts_public.at(key).get_current_value()
     }
 }
