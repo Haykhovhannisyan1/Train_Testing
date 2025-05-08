@@ -171,8 +171,8 @@ export class TrainContract extends ContractBase {
     constructor: (() => ContractFunctionInteraction) &
       Pick<ContractMethod, 'selector'>;
 
-    /** get_htlc_public_solver(key: field) */
-    get_htlc_public_solver: ((key: FieldLike) => ContractFunctionInteraction) &
+    /** get_htlc_public(key: field) */
+    get_htlc_public: ((key: FieldLike) => ContractFunctionInteraction) &
       Pick<ContractMethod, 'selector'>;
 
     /** is_contract_initialized(Id: field) */

@@ -7,8 +7,35 @@ import {
   createAztecNodeClient,
   createPXEClient,
   PXE,
+  SponsoredFeePaymentMethod,
   waitForPXE,
 } from '@aztec/aztec.js';
+import { createStore } from '@aztec/kv-store/lmdb';
+import { createPXEService, getPXEServiceConfig } from '@aztec/pxe/server';
+import { getSponsoredFPCInstance } from './fpc.ts';
+
+export async function getPXEs(names: string[]): Promise<PXE[]> {
+  const url = process.env.PXE_URL ?? 'http://localhost:8080';
+  const node = createAztecNodeClient(url);
+
+  const fullConfig = {
+    ...getPXEServiceConfig(),
+    l1Contracts: await node.getL1ContractAddresses(),
+    proverEnabled: false,
+  };
+
+  const svcs: PXE[] = [];
+  for (const name of names) {
+    const store = await createStore(name, {
+      dataDirectory: 'store',
+      dataStoreMapSizeKB: 1e6,
+    });
+    const pxe = await createPXEService(node, fullConfig, true, store);
+    await waitForPXE(pxe);
+    svcs.push(pxe);
+  }
+  return svcs;
+}
 
 const DEFAULT_HOST = 'localhost';
 
@@ -103,10 +130,12 @@ export async function simulateBlockPassing(
   wallet: any,
   numBlocks: number = 1,
 ): Promise<void> {
+  const sponseredFPC = await getSponsoredFPCInstance();
+  const paymentMethod = new SponsoredFeePaymentMethod(sponseredFPC.address);
   for (let i = 0; i < numBlocks; i++) {
     await contract.methods
       .mint_to_public(wallet.getAddress(), 1000n)
-      .send()
+      .send({ fee: { paymentMethod } })
       .wait();
     console.log(`Simulated block ${await pxe.getBlockNumber()} passed.`);
   }
@@ -183,4 +212,15 @@ export async function getAztecNode(o?: string | number): Promise<AztecNode> {
           ? s
           : `http://${s}`;
   return createAztecNodeClient(url);
+}
+
+export async function logPXERegistrations(pxes: PXE[]): Promise<void> {
+  for (let i = 0; i < pxes.length; i++) {
+    const pxe = pxes[i];
+    console.log(
+      `PXE ${i + 1} registered accounts:`,
+      await pxe.getRegisteredAccounts(),
+    );
+    console.log(`PXE ${i + 1} registered contracts:`, await pxe.getContracts());
+  }
 }
