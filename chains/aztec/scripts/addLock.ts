@@ -1,5 +1,9 @@
-import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
-import { AztecAddress, Contract } from '@aztec/aztec.js';
+import {
+  AztecAddress,
+  Contract,
+  Fr,
+  SponsoredFeePaymentMethod,
+} from '@aztec/aztec.js';
 import { TrainContract } from './Train.ts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
 import {
@@ -10,36 +14,49 @@ import {
   updateData,
   simulateBlockPassing,
   getHTLCDetails,
-  connectPXE,
+  getPXEs,
 } from './utils.ts';
 import { CheatCodes } from '@aztec/aztec.js/testing';
+import { getSchnorrAccount } from '@aztec/accounts/schnorr';
+import { deriveSigningKey } from '@aztec/stdlib/keys';
+import { getSponsoredFPCInstance } from './fpc.ts';
 
 const TrainContractArtifact = TrainContract.artifact;
 const ethRpcUrl = 'http://localhost:8545';
 
 async function main(): Promise<void> {
-  const pxe = await connectPXE(8080);
-  const cc = await CheatCodes.create([ethRpcUrl], pxe);
-
-  const [senderWallet, wallet2, wallet3]: any[] =
-    await getInitialTestAccountsWallets(pxe);
-  const sender: string = senderWallet.getAddress();
-  console.log(`Using wallet: ${sender}`);
+  const [pxe1, pxe2, pxe3] = await getPXEs(['pxe1', 'pxe2', 'pxe3']);
+  const cc = await CheatCodes.create([ethRpcUrl], pxe1);
+  const sponseredFPC = await getSponsoredFPCInstance();
+  const paymentMethod = new SponsoredFeePaymentMethod(sponseredFPC.address);
+  const data = readData();
+  let userSecertKey = Fr.fromString(data.userSecertKey);
+  let userSalt = Fr.fromString(data.userSalt);
+  const schnorWallet = await getSchnorrAccount(
+    pxe1,
+    userSecertKey,
+    deriveSigningKey(userSecertKey),
+    userSalt,
+  );
+  const senderWallet = await schnorWallet.getWallet();
+  const deployerSecretKey = Fr.fromString(data.deployerSecertKey);
+  const deployerSalt = Fr.fromString(data.deployerSalt);
+  const schnorWallet1 = await getSchnorrAccount(
+    pxe3,
+    deployerSecretKey,
+    deriveSigningKey(deployerSecretKey),
+    deployerSalt,
+  );
+  const deployer = await schnorWallet1.getWallet();
+  console.log(`Using wallet: ${senderWallet.getAddress()}`);
 
   const pair = generateSecretAndHashlock();
-  updateData({
-    hashlock0: pair[1].toString(),
-    secret0: pair[0].toString(),
-  });
-
-  const data = readData();
   const Id = BigInt(data.commitId);
-  // const now = BigInt(Math.floor(Date.now() / 1000));
   const now = await cc.eth.timestamp();
   const timelock = now + 901;
 
   const contract = await Contract.at(
-    AztecAddress.fromString(data.train),
+    AztecAddress.fromString(data.trainContractAddress),
     TrainContractArtifact,
     senderWallet,
   );
@@ -48,26 +65,33 @@ async function main(): Promise<void> {
     .simulate();
   if (!is_contract_initialized) throw new Error('HTLC Does Not Exsist');
   const addLockTx = await contract.methods
-    .add_lock_private_user(Id, stringToUint8Array(data.hashlock0), timelock)
-    .send()
+    .add_lock_private_user(Id, stringToUint8Array(pair[1].toString()), timelock)
+    .send({ fee: { paymentMethod } })
     .wait();
 
   console.log('tx : ', addLockTx);
-  publicLogs(pxe);
+  await publicLogs(pxe1);
 
   const TokenContractArtifact = TokenContract.artifact;
   const asset = await Contract.at(
-    AztecAddress.fromString(data.token),
+    AztecAddress.fromString(data.tokenAddress),
     TokenContractArtifact,
     senderWallet,
   );
   console.log(
     'Public balance of Train: ',
-    await asset.methods.balance_of_public(data.train).simulate(),
+    await asset.methods.balance_of_public(data.trainContractAddress).simulate(),
   );
-  const assetMinter = await TokenContract.at(data.token, wallet2);
-  await simulateBlockPassing(pxe, assetMinter, wallet3, 3);
+  const assetMinter = await TokenContract.at(
+    AztecAddress.fromString(data.tokenAddress),
+    deployer,
+  );
+  await simulateBlockPassing(pxe3, assetMinter, deployer, 3);
   getHTLCDetails(contract, Id);
+  updateData({
+    hashlock: pair[1].toString(),
+    secret: pair[0].toString(),
+  });
 }
 
 main().catch((err: any) => {
