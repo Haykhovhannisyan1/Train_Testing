@@ -146,6 +146,13 @@ storage {
     contracts: StorageMap<u256, HTLC> = StorageMap::<u256, HTLC> {},
     rewards: StorageMap<u256, Reward> = StorageMap::<u256, Reward> {},
 }
+// message prefix '\x19Fuel Signed Message:\n'
+const MESSAGE_PREFIX: [u8; 22] = [
+    25, 70, 117, 101, 108, 32, 83, 105, 103, 110, 101, 100, 32, 77, 101, 115, 115,
+    97, 103, 101, 58, 10,
+];
+// fixed message length
+const MESSAGE_LENGTH: [u8; 2] = [54, 54];
 // Check if an HTLC exists
 #[storage(read)]
 fn has_htlc(Id: u256) -> bool {
@@ -265,8 +272,8 @@ impl Train for Contract {
         });
         Id
     }
-    /// Adds a hashlock and updates the timelock for an existing HTLC using a signed message.
-    /// Verifies the provided signature and updates the HTLC if valid. Emits a `TokenLockAdded` event.
+    ///  Adds a hashlock and updates the timelock for an existing HTLC using a signed message.
+    ///  Verifies the provided signature and updates the HTLC if valid. Emits a `TokenLockAdded` event.
     #[storage(read, write)]
     fn add_lock_sig(signature: B512, Id: u256, hashlock: b256, timelock: u64) -> u256 {
         reentrancy_guard();
@@ -274,15 +281,49 @@ impl Train for Contract {
         require(timelock > timestamp() + 900, "Not Future Timelock");
         let mut htlc: HTLC = storage.contracts.get(Id).try_read().unwrap();
         let message: [b256; 3] = [Id.into(), hashlock, timelock.as_u256().into()];
-        let message_hash: b256 = sha256(message);
+        let message_hash: b256 = sha256(
+            {
+                let mut bytes = Bytes::new();
+                bytes
+                    .append(Bytes::from(message[0]));
+                bytes
+                    .append(Bytes::from(message[1]));
+                bytes
+                    .append(Bytes::from(message[2]));
+                bytes
+            },
+        );
+        log(message_hash);
+        let signed_messsage_hash = sha256(
+            {
+                let mut bytes = Bytes::new();
+                let mut vec = Vec::new();
+                let mut i: u64 = 0;
+                while i < 22 {
+                    vec.push(MESSAGE_PREFIX[i]);
+                    i = i + 1;
+                }
+                let mut j: u64 = 0;
+                while j < 2 {
+                    vec.push(MESSAGE_LENGTH[j]);
+                    j = j + 1;
+                }
+                bytes
+                    .append(Bytes::from(vec));
+                bytes
+                    .append(Bytes::from((message_hash)));
+                bytes
+            },
+        );
+        log(signed_messsage_hash);
         let (r, s): (b256, b256) = <(b256, b256) as From<B512>>::from(signature);
-        let sig: Signature = Signature::Secp256k1(Secp256k1::from((r, s)));
-        let msg: Message = Message::from(message_hash);
-        let addr: Address = Address::from(htlc.sender);
-        let result = sig.verify_address(addr, msg);
-        assert(result.is_ok());
+        let sig = Signature::Secp256k1(Secp256k1::from((r, s)));
+        let msg = Message::from(Bytes::from(signed_messsage_hash));
+        log(msg.bytes());
+        let addr = Address::from(htlc.sender);
+        require(sig.verify_address(addr, msg).is_ok(), "Invalid Signature");
         require(htlc.claimed == 1, "Already Claimed");
-        require(htlc.hashlock == b256::from(1), "Hashlock Already Set");
+        require(htlc.hashlock == b256::zero(), "Hashlock Already Set");
         htlc.hashlock = hashlock;
         htlc.timelock = timelock;
         storage.contracts.insert(Id, htlc);
