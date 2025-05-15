@@ -16,10 +16,14 @@ jobs:
 
     - name: Install Solana CLI
       run: |
-        sh -c "$(curl -sSfL https://release.solana.com/v1.18.13/install)"
+        sh -c "$(curl -sSfL https://release.anza.xyz/v2.2.14/install)"
         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
         export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-        solana --version  # Immediate check to ensure successful installation
+
+  #   - name: Install Solana CLI
+  #     uses: metaplex-foundation/setup-solana@v1
+  # with:
+  #   solana-version: v2.2.14
 
     - name: Install Anchor CLI
       run: |
