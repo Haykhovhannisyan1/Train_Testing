@@ -31,20 +31,27 @@ jobs:
         avm install latest
         avm use latest
         echo "$HOME/.avm/bin" >> $GITHUB_PATH
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install
 
     - name: Verify installations
       run: |
         solana --version
         anchor --version
+        yarn   --version
 
     - name: Start Solana Localnet
       run: solana-test-validator > validator.log 2>&1 &
 
     - name: Wait for Localnet
       run: sleep 10
-
-    - name: Install dependencies
-      run: yarn install
 
     - name: Build Anchor Project
       working-directory: contracts/solana/token
