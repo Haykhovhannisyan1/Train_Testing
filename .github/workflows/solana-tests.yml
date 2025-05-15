@@ -18,6 +18,8 @@ jobs:
       run: |
         sh -c "$(curl -sSfL https://release.solana.com/v1.18.13/install)"
         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+        solana --version  # Immediate check to ensure successful installation
 
     - name: Install Anchor CLI
       run: |
