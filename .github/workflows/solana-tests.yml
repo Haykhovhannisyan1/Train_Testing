@@ -1,0 +1,49 @@
+name: Anchor Localnet Tests
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  anchor-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # - name: Install Solana CLI
+    #   run: |
+    #     sh -c "$(curl -sSfL https://release.solana.com/v1.18.13/install)"
+    #     echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+    # - name: Install Anchor CLI
+    #   run: |
+    #     cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+    #     avm install latest
+    #     avm use latest
+    #     echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+    - name: Verify installations
+      run: |
+        solana --version
+        anchor --version
+
+    - name: Start Solana Localnet
+      run: solana-test-validator > validator.log 2>&1 &
+
+    - name: Wait for Localnet
+      run: sleep 10
+
+    - name: Install dependencies
+      run: yarn install
+
+    - name: Build Anchor Project
+      working-directory: contracts/solana/token
+      run: anchor build
+
+    - name: Run Anchor tests
+      working-directory: contracts/solana/token
+      run: anchor test
