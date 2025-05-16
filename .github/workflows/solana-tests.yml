@@ -51,6 +51,9 @@ jobs:
         anchor --version
         yarn   --version
 
+    - name: Generate Solana keypair
+      run: solana-keygen new --no-bip39-passphrase
+
     - name: Start Solana Localnet
       run: solana-test-validator > validator.log 2>&1 &
 
