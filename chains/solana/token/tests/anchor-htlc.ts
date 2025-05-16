@@ -418,7 +418,7 @@ describe("HTLC", () => {
     bobTokenAccount = await mintTokensForUser(bob.publicKey, tokenMint);
 
     await T1_1(bobTokenAccount)
-    // await T1_2(bobTokenAccount)
+    await T1_2(bobTokenAccount)
   });
 
   /// Tests for already redeemed HTLCs.
