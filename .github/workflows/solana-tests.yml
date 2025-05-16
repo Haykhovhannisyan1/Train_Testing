@@ -63,4 +63,4 @@ jobs:
 
     - name: Run Anchor tests
       working-directory: chains/solana/token
-      run: anchor test
+      run: anchor test --skip-local-validator
