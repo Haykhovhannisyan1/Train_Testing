@@ -20,4 +20,4 @@ wallet = "~/.config/solana/id.json"
 
 [test]
 startup_wait = 5000
-validator = false
+validator = { enabled = false }
