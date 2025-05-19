@@ -61,7 +61,7 @@ jobs:
       run: sleep 10
 
     - name: Build Anchor Project
-      # working-directory: chains/solana/token
+      working-directory: chains/solana/token
       run: anchor build
 
     - name: Deploy Anchor Program
