@@ -73,5 +73,5 @@ jobs:
       run: anchor test --skip-local-validator --skip-deploy
       continue-on-error: true
 
-    - name: Print Program ID
-      run: cat ./target/deploy/native-keypair.json
+    # - name: Print Program ID
+    #   run: cat ./target/deploy/native-keypair.json
