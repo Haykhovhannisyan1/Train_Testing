@@ -11,7 +11,7 @@ anchor_htlc = "AN8Y7CGKNQcBCLxeNmnob786v8EkWhrGBBriPD2JzjK8"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
