@@ -10,10 +10,6 @@ name = "native"
 
 
 [features]
-# default = ["custom-heap", "custom-panic", "anchor-debug"]
-# custom-heap = []
-# custom-panic = []
-# anchor-debug = []
 default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
