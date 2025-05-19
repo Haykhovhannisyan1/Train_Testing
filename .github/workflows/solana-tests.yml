@@ -64,12 +64,12 @@ jobs:
       working-directory: chains/solana/token
       run: anchor build
 
-    - name: Deploy Anchor Program
-      working-directory: chains/solana/token
-      run: anchor deploy
+    # - name: Deploy Anchor Program
+    #   working-directory: chains/solana/token
+    #   run: anchor deploy
 
     - name: Run Anchor tests
-      # working-directory: chains/solana/token
+      working-directory: chains/solana/token
       run: anchor test --skip-local-validator --skip-deploy
     - name: Print Program ID
       run: cat ./target/deploy/native-keypair.json
