@@ -20,11 +20,6 @@ jobs:
         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
         export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 
-  #   - name: Install Solana CLI
-  #     uses: metaplex-foundation/setup-solana@v1
-  # with:
-  #   solana-version: v2.2.14
-
     - name: Install Anchor CLI
       run: |
         cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
@@ -72,6 +67,3 @@ jobs:
       working-directory: chains/solana/token
       run: anchor test --skip-local-validator --skip-deploy
       continue-on-error: true
-
-    # - name: Print Program ID
-    #   run: cat ./target/deploy/native-keypair.json
