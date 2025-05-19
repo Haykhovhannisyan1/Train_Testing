@@ -460,7 +460,7 @@ pub mod anchor_htlc {
         || ix.data.len()!= (16 + 64 + 32 + full_message.len())
         // And data of this size
         {
-            return Err(HTLCError::SigFailed.into());
+            return Err(HTLCError::SigVerificationFailed.into());
         }
 
         check_ed25519_data(&ix.data, &signer, &full_message, &signature)?;
@@ -945,6 +945,4 @@ pub enum HTLCError {
     NoToken,
     #[msg("Signature verification failed.")]
     SigVerificationFailed,
-    #[msg("Sign failed.")]
-    SigFailed,
 }
