@@ -65,7 +65,7 @@ jobs:
       run: anchor build
 
     - name: Deploy Anchor Program
-      # working-directory: chains/solana/token
+      working-directory: chains/solana/token
       run: anchor deploy
 
     - name: Run Anchor tests
