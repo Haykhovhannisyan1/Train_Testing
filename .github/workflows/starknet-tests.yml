@@ -21,12 +21,14 @@ jobs:
           node-version: 22
 
       - name: Install Dependencies
+        working-directory: chains/starknet/tests 
         run: |
           rm -f package-lock.json
           npm install
           npm install typescript ts-node @types/node starknet
 
       - name: Install and Run Katana (Local Starknet Devnet)
+        working-directory: chains/starknet/tests
         run: |
           curl -L https://foundry.paradigm.xyz | bash
           export PATH=$PATH:$HOME/.foundry/bin
