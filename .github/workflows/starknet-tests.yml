@@ -37,10 +37,8 @@ jobs:
       #     sleep 5  # Wait for Katana to fully start
       #   shell: bash -l {0}
 
-      - name: Install Rust (for Katana)
-        uses: actions/setup-rust@v1
-        with:
-          rust-version: '1.75.0'
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Katana
         run: |
