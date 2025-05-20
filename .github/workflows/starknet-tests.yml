@@ -31,7 +31,6 @@ jobs:
         # working-directory: chains/starknet/tests
         run: |
           curl -L https://foundry.paradigm.xyz | bash
-          source /home/runner/.bashrc
           export PATH="$PATH:$HOME/.foundry/bin"
           $HOME/.foundry/bin/foundryup
           katana --version
