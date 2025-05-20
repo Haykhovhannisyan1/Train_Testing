@@ -28,7 +28,7 @@ jobs:
           npm install typescript ts-node @types/node starknet
 
       - name: Install and Run Katana (Local Starknet Devnet)
-        working-directory: chains/starknet/tests
+        # working-directory: chains/starknet/tests
         run: |
           curl -L https://foundry.paradigm.xyz | bash
           export PATH=$PATH:$HOME/.foundry/bin
