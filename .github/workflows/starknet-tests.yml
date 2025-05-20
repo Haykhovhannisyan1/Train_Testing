@@ -27,29 +27,29 @@ jobs:
           npm install
           npm install typescript ts-node @types/node starknet
 
-      # - name: Install and Run Katana (Local Starknet Devnet)
-      #   run: |
-      #     curl -L https://foundry.paradigm.xyz | bash
-      #     export PATH="$HOME/.foundry/bin:$PATH"
-      #     foundryup
-      #     katana --version
-      #     katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > /dev/null 2>&1 &
-      #     sleep 5  # Wait for Katana to fully start
-      #   shell: bash -l {0}
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Katana
+      - name: Install and Run Katana (Local Starknet Devnet)
         run: |
-          cargo install --locked --git https://github.com/dojoengine/dojo.git katana --force
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl -L https://foundry.paradigm.xyz | bash
+          export PATH="$HOME/.foundry/bin:$PATH"
+          foundryup
+          katana --version
+          katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > /dev/null 2>&1 &
+          sleep 5  # Wait for Katana to fully start
+        shell: bash -l {0}
 
-      - name: Run Katana (Local Starknet Devnet)
-        run: |
-          katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > katana.log 2>&1 &
-          sleep 5
-          cat katana.log
+      # - name: Install Katana
+      #   run: |
+      #     cargo install --locked --git https://github.com/dojoengine/dojo.git katana --force
+      #     echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # - name: Run Katana (Local Starknet Devnet)
+      #   run: |
+      #     katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > katana.log 2>&1 &
+      #     sleep 5
+      #     cat katana.log
 
       - name: Compile Starknet Contracts
         working-directory: chains/starknet/tests
