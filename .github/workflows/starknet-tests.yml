@@ -22,6 +22,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          rm -f package-lock.json
           npm install
           npm install typescript ts-node @types/node starknet
 
