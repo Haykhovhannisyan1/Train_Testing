@@ -40,9 +40,9 @@ jobs:
       - name: Compile Starknet Contracts
         working-directory: chains/starknet/tests
         run: |
-          npm run build # Adjust this command if you use a custom compile command
+          npm run build
 
       - name: Run Starknet Tests
         working-directory: chains/starknet/tests
         run: |
-          npx ts-node tests/starknet_tests.ts
+          npx ts-node starknet_tests.ts
