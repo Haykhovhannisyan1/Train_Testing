@@ -31,9 +31,9 @@ jobs:
         # working-directory: chains/starknet/tests
         run: |
           curl -L https://foundry.paradigm.xyz | bash
-          export PATH=$PATH:$HOME/.foundry/bin
-          source $HOME/.bashrc
-          foundryup
+          source /home/runner/.bashrc
+          export PATH="$PATH:$HOME/.foundry/bin"
+          $HOME/.foundry/bin/foundryup
           katana --version
           katana --accounts 0 --disable-fee > /dev/null 2>&1 &
           sleep 5  # Wait for Katana to fully start
