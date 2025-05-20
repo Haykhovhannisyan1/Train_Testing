@@ -45,10 +45,10 @@ jobs:
 
       - name: Compile Starknet Contracts
         working-directory: chains/starknet/tests
-        run: npm run build
+        run: |
+          npm run build
 
       - name: Run Starknet Tests
         working-directory: chains/starknet/tests
-        env:
-          STARKNET_RPC_URL: http://127.0.0.1:5050
-        run: npx ts-node starknet_tests.ts
+        run: |
+          npx ts-node starknet_tests.ts
