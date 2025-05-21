@@ -12,51 +12,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    # ─────────────────────────────────────────────────────────────
+    # 1.  Repo & toolchain setup
+    # ─────────────────────────────────────────────────────────────
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+    - name: Set up Node.js 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
 
-      - name: Install Dependencies
-        working-directory: chains/starknet/tests 
-        run: |
-          rm -f package-lock.json
-          npm install
-          npm install typescript ts-node @types/node starknet
+    - name: Install npm dev-deps for tests
+      working-directory: chains/starknet/tests
+      run: |
+        rm -f package-lock.json
+        npm install
+        npm install typescript ts-node @types/node starknet
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+    # (Rust not needed when we use the pre-built Katana binary,
+    #  but keep it if you compile other Rust code in the monorepo.)
+    - name: Install Rust (stable)
+      uses: dtolnay/rust-toolchain@stable
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
+    # ─────────────────────────────────────────────────────────────
+    # 2.  Katana v1.5.0 – download, install, verify
+    # ─────────────────────────────────────────────────────────────
+    - name: Install Katana v1.5.0 (pre-built binary)
+      run: |
+        curl -L \
+          -o katana.tar.gz \
+          https://github.com/dojoengine/katana/releases/download/v1.5.0/katana-x86_64-unknown-linux-gnu.tar.gz
 
-      - name: Install Katana binary
-        run: |
-          cargo install --git https://github.com/dojoengine/dojo --tag v0.6.0 --locked katana
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          katana --version
+        tar -xzf katana.tar.gz                 # extracts `katana`
+        sudo mv katana /usr/local/bin/         # put it on PATH
+        katana --version                       # sanity check
 
-      - name: Start Katana (Local Starknet Devnet)
-        shell: bash -l {0}
-        run: |
-          katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
-          sleep 10
-          echo "=== Katana Logs ==="
-          head -40 katana.log
+    # ─────────────────────────────────────────────────────────────
+    # 3.  Start Katana devnet on localhost:5050
+    # ─────────────────────────────────────────────────────────────
+    - name: Start Katana (local Starknet devnet)
+      shell: bash -l {0}                       # login shell so ~/.bashrc is sourced
+      run: |
+        katana --accounts 0 --disable-fee \
+               --host 127.0.0.1 --port 5050 \
+               > katana.log 2>&1 &
+        sleep 10                               # give it time to boot
+        echo "=== Katana Logs (first 40 lines) ==="
+        head -40 katana.log
 
-      - name: Compile Starknet Contracts
-        working-directory: chains/starknet/tests
-        run: |
-          npm run build
+    # ─────────────────────────────────────────────────────────────
+    # 4.  Build & test your Starknet project
+    # ─────────────────────────────────────────────────────────────
+    - name: Compile Starknet Contracts
+      working-directory: chains/starknet/tests
+      run: npm run build
 
-      - name: Run Starknet Tests
-        working-directory: chains/starknet/tests
-        env:
-          STARKNET_RPC: http://127.0.0.1:5050
-        run: |
-          npx ts-node starknet_tests.ts
+    - name: Run Starknet Tests
+      working-directory: chains/starknet/tests
+      env:
+        STARKNET_RPC: http://127.0.0.1:5050
+      run: npx ts-node starknet_tests.ts
