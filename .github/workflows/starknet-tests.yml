@@ -32,11 +32,16 @@ jobs:
 
       - name: Install Katana (Foundry) 
         run: |
-          # Download and install Foundry (foundryup ends up in $HOME/.foundry/bin)
-          curl -L https://foundry.paradigm.xyz | bash -s -- --skip-confirm
-          export PATH="$HOME/.foundry/bin:$PATH"          # make binaries visible _now_
-          $HOME/.foundry/bin/foundryup --version          # install the toolchain & show version
-          ls -l $HOME/.foundry/bin                        # debug‑listing (optional)
+          # Install Foundry (downloads foundryup and writes it to ~/.foundry/bin)
+          curl -L https://foundry.paradigm.xyz | bash
+          # load the PATH export that the installer added to ~/.bashrc
+          source $HOME/.bashrc
+          # install the toolchain
+          foundryup
+          # show versions for debugging
+          which foundryup
+          foundryup --version
+          which katana || true
         shell: bash -l {0} 
 
       - name: Start Katana (Local Starknet Devnet)
