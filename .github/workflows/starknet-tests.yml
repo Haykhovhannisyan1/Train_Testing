@@ -30,28 +30,24 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Katana (Foundry) 
+      - name: Install build dependencies
         run: |
-          # Install Foundry (downloads foundryup and writes it to ~/.foundry/bin)
-          curl -L https://foundry.paradigm.xyz | bash
-          # load the PATH export that the installer added to ~/.bashrc
-          source $HOME/.bashrc
-          # install the toolchain
-          foundryup
-          # show versions for debugging
-          which foundryup
-          foundryup --version
-          which katana || true
-        shell: bash -l {0} 
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Install Katana binary
+        run: |
+          cargo install --git https://github.com/dojoengine/dojo --tag v0.6.0 --locked --bin katana
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          katana --version
 
       - name: Start Katana (Local Starknet Devnet)
+        shell: bash -l {0}
         run: |
-          export PATH="$HOME/.foundry/bin:$PATH"
           katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
           sleep 10
           echo "=== Katana Logs ==="
           head -40 katana.log
-        shell: bash -l {0} 
 
       - name: Compile Starknet Contracts
         working-directory: chains/starknet/tests
