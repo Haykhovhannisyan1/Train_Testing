@@ -37,7 +37,8 @@ jobs:
 
       - name: Install Katana binary
         run: |
-          cargo install --git https://github.com/dojoengine/dojo --tag v0.6.0 --locked --bin katana
+          cargo install --git https://github.com/dojoengine/dojo --tag v1.5.0 --locked \
+            --package katana --bin katana
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           katana --version
 
