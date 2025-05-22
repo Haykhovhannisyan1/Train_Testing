@@ -8,55 +8,47 @@ on:
 
 jobs:
   run-starknet-tests:
-    name: Run Starknet Tests
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up Node.js 22
-      uses: actions/setup-node@v4
+    - uses: actions/setup-node@v4
       with:
         node-version: 22
 
-    - name: Install npm dev-deps for tests
+    - name: NPM deps for tests
       working-directory: chains/starknet/tests
       run: |
         rm -f package-lock.json
-        npm install
+        npm ci
         npm install typescript ts-node @types/node starknet
 
-    # (Rust not needed when we use the pre-built Katana binary,
-    #  but keep it if you compile other Rust code in the monorepo.)
-    - name: Install Rust (stable)
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Install Katana v1.5.0 (pre-built binary)
+    # -- Katana -----------------------------------------------------------------
+    - name: Install Katana v1.5.0
       run: |
+        set -euo pipefail
+        KATANA_VER="v1.5.0"
         curl -L \
-          -o katana.tar.gz \
-          https://github.com/dojoengine/katana/releases/download/v1.5.0/katana-x86_64-unknown-linux-gnu.tar.gz
+          -o katana \
+          "https://github.com/dojoengine/dojo/releases/download/${KATANA_VER}/katana-x86_64-unknown-linux-gnu"
+        chmod +x katana
+        sudo mv katana /usr/local/bin/
+        katana --version
 
-        tar -xzf katana.tar.gz                 # extracts `katana`
-        sudo mv katana /usr/local/bin/         # put it on PATH
-        katana --version                       # sanity check
-
-    - name: Start Katana (local Starknet devnet)
-      shell: bash -l {0}                       # login shell so ~/.bashrc is sourced
+    - name: Start Katana devnet
+      shell: bash -l {0}
       run: |
-        katana --accounts 0 --disable-fee \
-               --host 127.0.0.1 --port 5050 \
-               > katana.log 2>&1 &
-        sleep 10                               # give it time to boot
-        echo "=== Katana Logs (first 40 lines) ==="
+        katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
+        sleep 10
         head -40 katana.log
 
-    - name: Compile Starknet Contracts
+    # --------------------------------------------------------------------------
+    - name: Compile Starknet contracts
       working-directory: chains/starknet/tests
       run: npm run build
 
-    - name: Run Starknet Tests
+    - name: Run Starknet tests
       working-directory: chains/starknet/tests
       env:
         STARKNET_RPC: http://127.0.0.1:5050
