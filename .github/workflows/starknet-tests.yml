@@ -36,7 +36,7 @@ jobs:
           export PATH="$HOME/.foundry/bin:$PATH"
           foundryup
           katana --version
-          katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > /dev/null 2>&1 &
+          katana --accounts 0 --dev --dev.no-fee --host 0.0.0.0 --port 5050 > /dev/null 2>&1 &
           sleep 10  # Wait for Katana to fully start
         shell: bash -l {0}
 
@@ -47,7 +47,5 @@ jobs:
 
       - name: Run Starknet Tests
         working-directory: chains/starknet/tests
-        env:
-          STARKNET_RPC_URL: http://127.0.0.1:5050
         run: |
           npx ts-node starknet_tests.ts
