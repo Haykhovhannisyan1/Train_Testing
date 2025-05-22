@@ -8,48 +8,44 @@ on:
 
 jobs:
   run-starknet-tests:
+    name: Run Starknet Tests
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 22
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-    - name: NPM deps for tests
-      working-directory: chains/starknet/tests
-      run: |
-        rm -f package-lock.json
-        npm ci
-        npm install typescript ts-node @types/node starknet
+      - name: Install Dependencies
+        working-directory: chains/starknet/tests 
+        run: |
+          rm -f package-lock.json
+          npm install
+          npm install typescript ts-node @types/node starknet
 
-    # -- Katana -----------------------------------------------------------------
-    - name: Install Katana v1.5.0
-      run: |
-        set -euo pipefail
-        KATANA_VER="v1.5.0"
-        curl -L \
-          -o katana \
-          "https://github.com/dojoengine/dojo/releases/download/${KATANA_VER}/katana-x86_64-unknown-linux-gnu"
-        chmod +x katana
-        sudo mv katana /usr/local/bin/
-        katana --version
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Start Katana devnet
-      shell: bash -l {0}
-      run: |
-        katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
-        sleep 10
-        head -40 katana.log
+      - name: Install and Run Katana (Local Starknet Devnet)
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          export PATH="$HOME/.foundry/bin:$PATH"
+          foundryup
+          katana --version
+          katana --accounts 0 --disable-fee --host 0.0.0.0 --port 5050 > /dev/null 2>&1 &
+          sleep 10  # Wait for Katana to fully start
+        shell: bash -l {0}
 
-    # --------------------------------------------------------------------------
-    - name: Compile Starknet contracts
-      working-directory: chains/starknet/tests
-      run: npm run build
+      - name: Compile Starknet Contracts
+        working-directory: chains/starknet/tests
+        run: |
+          npm run build
 
-    - name: Run Starknet tests
-      working-directory: chains/starknet/tests
-      env:
-        STARKNET_RPC: http://127.0.0.1:5050
-      run: npx ts-node starknet_tests.ts
+      - name: Run Starknet Tests
+        working-directory: chains/starknet/tests
+        run: |
+          npx ts-node starknet_tests.ts
