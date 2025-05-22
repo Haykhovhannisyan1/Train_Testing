@@ -12,9 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # ─────────────────────────────────────────────────────────────
-    # 1.  Repo & toolchain setup
-    # ─────────────────────────────────────────────────────────────
     - name: Checkout Repository
       uses: actions/checkout@v4
 
@@ -35,9 +32,6 @@ jobs:
     - name: Install Rust (stable)
       uses: dtolnay/rust-toolchain@stable
 
-    # ─────────────────────────────────────────────────────────────
-    # 2.  Katana v1.5.0 – download, install, verify
-    # ─────────────────────────────────────────────────────────────
     - name: Install Katana v1.5.0 (pre-built binary)
       run: |
         curl -L \
@@ -48,9 +42,6 @@ jobs:
         sudo mv katana /usr/local/bin/         # put it on PATH
         katana --version                       # sanity check
 
-    # ─────────────────────────────────────────────────────────────
-    # 3.  Start Katana devnet on localhost:5050
-    # ─────────────────────────────────────────────────────────────
     - name: Start Katana (local Starknet devnet)
       shell: bash -l {0}                       # login shell so ~/.bashrc is sourced
       run: |
@@ -61,9 +52,6 @@ jobs:
         echo "=== Katana Logs (first 40 lines) ==="
         head -40 katana.log
 
-    # ─────────────────────────────────────────────────────────────
-    # 4.  Build & test your Starknet project
-    # ─────────────────────────────────────────────────────────────
     - name: Compile Starknet Contracts
       working-directory: chains/starknet/tests
       run: npm run build
