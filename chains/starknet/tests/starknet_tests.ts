@@ -9,6 +9,17 @@ import ETHTokenAbi from "./eth_token_abi.json";
 
 /// Local katana provider
 const provider = new RpcProvider({ nodeUrl: 'http://127.0.0.1:5050' })
+async function checkKatana() {
+    try {
+        const chainId = await provider.getChainId();
+        console.log(`✅ Connected to Katana: Chain ID ${chainId}`);
+    } catch (error) {
+        console.error('❌ Cannot connect to Katana:', error);
+        process.exit(1);
+    }
+}
+
+checkKatana();
 const local_privateKey = '0x3e3979c1ed728490308054fe357a9f49cf67f80f9721f44cc57235129e090f4';
 // const local_publicKey = ec.starkCurve.getStarkKey(local_privateKey);
 const local_address = '0x6677fe62ee39c7b07401f754138502bab7fac99d2d3c5d37df7d1c6fab10819';
