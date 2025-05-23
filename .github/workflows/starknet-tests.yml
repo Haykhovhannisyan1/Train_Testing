@@ -34,13 +34,12 @@ jobs:
         run: |
           curl -L https://foundry.paradigm.xyz | bash
           export PATH="$HOME/.foundry/bin:$PATH"
-          source $HOME/.bashrc
-          foundryup
-          katana --version
-          katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
+          $HOME/.foundry/bin/foundryup
+          $HOME/.foundry/bin/katana --version
+          $HOME/.foundry/bin/katana --accounts 0 --disable-fee --host 127.0.0.1 --port 5050 > katana.log 2>&1 &
           sleep 15
           curl http://127.0.0.1:5050
-        shell: bash -l {0}
+        shell: bash
 
       - name: Compile Starknet Contracts
         working-directory: chains/starknet/tests
