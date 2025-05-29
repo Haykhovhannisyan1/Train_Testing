@@ -240,7 +240,6 @@ pub mod anchor_htlc {
         src_receiver: Pubkey,
         timelock: u64,
         amount: u64,
-        commit_bump: u8,
     ) -> Result<[u8; 32]> {
         let clock = Clock::get().unwrap();
         let time: u64 = clock.unix_timestamp.try_into().unwrap();
@@ -249,7 +248,8 @@ pub mod anchor_htlc {
 
         let htlc = &mut ctx.accounts.htlc;
 
-        let bump_vector = commit_bump.to_le_bytes();
+        let htlc_bump = ctx.bumps.htlc;
+        let bump_vector = htlc_bump.to_le_bytes();
         let inner = vec![Id.as_ref(), bump_vector.as_ref()];
         let outer = vec![inner.as_slice()];
         let transfer_context = CpiContext::new_with_signer(
@@ -303,16 +303,16 @@ pub mod anchor_htlc {
         src_asset: String,
         src_receiver: Pubkey,
         amount: u64,
-        lock_bump: u8,
     ) -> Result<[u8; 32]> {
         let clock = Clock::get().unwrap();
         let time: u64 = clock.unix_timestamp.try_into().unwrap();
-        require!(timelock >= time + 900, HTLCError::InvalidTimeLock);
+        require!(timelock >= time + 1800, HTLCError::InvalidTimeLock);
         require!(amount != 0, HTLCError::FundsNotSent);
 
         let htlc = &mut ctx.accounts.htlc;
 
-        let bump_vector = lock_bump.to_le_bytes();
+        let htlc_bump = ctx.bumps.htlc;
+        let bump_vector = htlc_bump.to_le_bytes();
         let inner = vec![Id.as_ref(), bump_vector.as_ref()];
         let outer = vec![inner.as_slice()];
         let transfer_context = CpiContext::new_with_signer(
@@ -360,6 +360,7 @@ pub mod anchor_htlc {
                 && reward_timelock > clock.unix_timestamp.try_into().unwrap(),
             HTLCError::InvalidRewardTimeLock
         );
+        require!(htlc.reward == 0, HTLCError::RewardAlreadyExists);
 
         htlc.reward_timelock = reward_timelock;
         htlc.reward = reward;
@@ -640,7 +641,7 @@ pub struct HTLC {
     pub claimed: u8,
 }
 #[derive(Accounts)]
-#[instruction(Id: [u8;32], commit_bump: u8)]
+#[instruction(Id: [u8;32])]
 pub struct Commit<'info> {
     #[account(mut)]
     pub sender: Signer<'info>,
@@ -681,7 +682,7 @@ pub struct Commit<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(Id: [u8; 32], lock_bump: u8)]
+#[instruction(Id: [u8; 32])]
 pub struct Lock<'info> {
     #[account(mut)]
     pub sender: Signer<'info>,
@@ -830,7 +831,7 @@ pub struct Refund<'info> {
     has_one = sender @HTLCError::NotSender,
     has_one = token_contract @HTLCError::NoToken,
     constraint = htlc.claimed == 1 @ HTLCError::AlreadyClaimed,
-    constraint = Clock::get().unwrap().unix_timestamp >= htlc.timelock.try_into().unwrap() @ HTLCError::NotPastTimeLock,
+    constraint = Clock::get().unwrap().unix_timestamp > htlc.timelock.try_into().unwrap() @ HTLCError::NotPastTimeLock,
     )]
     pub htlc: Box<Account<'info, HTLC>>,
     #[account(
@@ -945,4 +946,6 @@ pub enum HTLCError {
     NoToken,
     #[msg("Signature verification failed.")]
     SigVerificationFailed,
+    #[msg("Reward Already Exists.")]
+    RewardAlreadyExists,
 }
