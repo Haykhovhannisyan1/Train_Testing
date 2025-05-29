@@ -361,7 +361,7 @@ describe("HTLC", () => {
     const Id = randomBytes(32);
     const secret = randomBytes(32);
     const hashlock = createHash("sha256").update(secret).digest();
-    const time = (new Date().getTime() + 1000000) / 1000;
+    const time = (new Date().getTime() + 10000000) / 1000;
     const rtime = (new Date().getTime() + 900000) / 1000;
 
     const pda = await getPdaParams(Id);
@@ -390,7 +390,7 @@ describe("HTLC", () => {
     const secret = randomBytes(32);
     const wrong_secret = randomBytes(32);
     const hashlock = createHash("sha256").update(secret).digest();
-    const time = (new Date().getTime() + 1000000) / 1000;
+    const time = (new Date().getTime() + 10000000) / 1000;
     const rtime = (new Date().getTime() + 900000) / 1000;
 
     const pda = await getPdaParams(Id);
@@ -432,7 +432,7 @@ describe("HTLC", () => {
     const Id = randomBytes(32);
     const secret = randomBytes(32);
     const hashlock = createHash("sha256").update(secret).digest();
-    const time = (new Date().getTime() + 1000000) / 1000;
+    const time = (new Date().getTime() + 10000000) / 1000;
     const rtime = (new Date().getTime() + 900000) / 1000;
 
     const pda = await getPdaParams(Id);
@@ -573,7 +573,7 @@ describe("HTLC", () => {
     const Id = randomBytes(32);
     const secret = randomBytes(32);
     const hashlock = createHash("sha256").update(secret).digest();
-    const time = (new Date().getTime() + 1000000) / 1000;
+    const time = (new Date().getTime() + 10000000) / 1000;
     const rtime = (new Date().getTime() + 900000) / 1000;
 
     await createHTLC(Id, new anchor.BN(rtime), new anchor.BN(time), new anchor.BN(AMOUNT), Array.from(hashlock));
