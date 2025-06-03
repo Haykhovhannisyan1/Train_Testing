@@ -1,4 +1,3 @@
-import assert from "assert";
 import * as anchor from "@coral-xyz/anchor";
 import { randomBytes, createHash } from "crypto";
 import * as ed from '@noble/ed25519';
