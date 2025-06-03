@@ -1,14 +1,14 @@
-name: Anchor Localnet Tests
+name: Solana Token Tests
 
 on:
   push:
     branches: [ dev ]
     paths:
-      - 'chains/solana/**'
+      - 'chains/solana/token/**'
   pull_request:
     branches: [ dev ]
     paths:
-      - 'chains/solana/**'
+      - 'chains/solana/token/**'
 
 jobs:
   anchor-test:
@@ -40,12 +40,8 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Install dependencies for token
+    - name: Install Yarn
       working-directory: chains/solana/token
-      run: yarn install
-  
-    - name: Install dependencies for native
-      working-directory: chains/solana/sol
       run: yarn install
 
     - name: Verify installations
@@ -64,19 +60,6 @@ jobs:
       run: sleep 10
 
     - name: Build Anchor Project
-      working-directory: chains/solana/sol
-      run: anchor build
-
-    - name: Deploy Anchor Program
-      working-directory: chains/solana/sol
-      run: anchor deploy
-
-    - name: Run Anchor tests
-      working-directory: chains/solana/sol
-      run: anchor test --skip-local-validator --skip-deploy
-      continue-on-error: true
-
-    - name: Build Anchor Project
       working-directory: chains/solana/token
       run: anchor build
 
@@ -88,5 +71,3 @@ jobs:
       working-directory: chains/solana/token
       run: anchor test --skip-local-validator --skip-deploy
       continue-on-error: true
-
-   
