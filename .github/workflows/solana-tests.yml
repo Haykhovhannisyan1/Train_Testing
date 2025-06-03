@@ -40,8 +40,12 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Install dependencies
-      working-directory: chains/solana
+    - name: Install dependencies for token
+      working-directory: chains/solana/token
+      run: yarn install
+  
+    - name: Install dependencies for native
+      working-directory: chains/solana/sol
       run: yarn install
 
     - name: Verify installations
